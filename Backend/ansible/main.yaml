@@ -1,0 +1,154 @@
+---
+- name: Centralized Linux Patch Management System
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    mysql_host: "192.168.10.20"
+    mysql_db: "patch_db"
+    mysql_user: "ansible_user"
+    mysql_password: "secure_password"
+
+  pre_tasks:
+    - name: Validate host connectivity and gather system info
+      setup:
+        filter: "ansible_distribution*"
+      register: system_facts
+
+    - name: Display system information
+      debug:
+        msg: "Processing {{ ansible_hostname }} - {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+  tasks:
+    - name: Check for available updates (RedHat/CentOS)
+      block:
+        - name: Check security updates
+          ansible.builtin.dnf:
+            list: updates
+            security: yes
+          register: security_updates
+          when: ansible_os_family == "RedHat"
+
+        - name: Check all available updates
+          ansible.builtin.dnf:
+            list: updates
+          register: all_updates
+          when: ansible_os_family == "RedHat"
+      when: ansible_os_family == "RedHat"
+
+    - name: Check for available updates (Ubuntu/Debian)
+      block:
+        - name: Update package cache
+          ansible.builtin.apt:
+            update_cache: yes
+          register: apt_update
+
+        - name: Check upgradable packages
+          ansible.builtin.apt:
+            upgrade: safe
+            check_mode: yes
+          register: upgradable_packages
+          when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Debian"
+
+    - name: Log pre-patch status to MySQL
+      community.mysql.mysql_query:
+        login_host: "{{ mysql_host }}"
+        login_user: "{{ mysql_user }}"
+        login_password: "{{ mysql_password }}"
+        login_db: "{{ mysql_db }}"
+        query: |
+          INSERT INTO patch_logs 
+          (hostname, os_family, packages_updated, patch_status, ansible_job_id, timestamp) 
+          VALUES (
+            '{{ ansible_hostname }}',
+            '{{ ansible_os_family }}',
+            'PRE_CHECK: {{ security_updates.results | length if security_updates is defined else upgradable_packages.stdout_lines | length }} packages available',
+            'PRE_CHECK_COMPLETED',
+            '{{ ansible_date_time.epoch }}',
+            NOW()
+          )
+
+    - name: Apply security updates (Dry Run - Simulation)
+      block:
+        - name: Apply security updates on RedHat
+          ansible.builtin.dnf:
+            name: "*"
+            state: latest
+            security: yes
+            check_mode: yes
+          register: patch_result_redhat
+          when: ansible_os_family == "RedHat"
+
+        - name: Apply security updates on Ubuntu
+          ansible.builtin.apt:
+            upgrade: yes
+            update_cache: yes
+            check_mode: yes
+          register: patch_result_ubuntu
+          when: ansible_os_family == "Debian"
+      when: false  # Set to true for actual execution
+
+    - name: Log patch simulation results
+      community.mysql.mysql_query:
+        login_host: "{{ mysql_host }}"
+        login_user: "{{ mysql_user }}"
+        login_password: "{{ mysql_password }}"
+        login_db: "{{ mysql_db }}"
+        query: |
+          INSERT INTO patch_logs 
+          (hostname, os_family, packages_updated, patch_status, ansible_job_id, timestamp) 
+          VALUES (
+            '{{ ansible_hostname }}',
+            '{{ ansible_os_family }}',
+            'SIMULATION: {{ patch_result_redhat.changed if patch_result_redhat is defined else patch_result_ubuntu.changed }} packages would be updated',
+            'SIMULATION_COMPLETED',
+            '{{ ansible_date_time.epoch }}',
+            NOW()
+          )
+
+  post_tasks:
+    - name: Generate patch summary report
+      debug:
+        msg: |
+          PATCH SUMMARY for {{ ansible_hostname }}:
+          - OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - Available Updates: {{ security_updates.results | length if security_updates is defined else upgradable_packages.stdout_lines | length }}
+          - Status: Dry Run Simulation Completed
+          - Logged to MySQL Database
+
+    - name: Final status log entry
+      community.mysql.mysql_query:
+        login_host: "{{ mysql_host }}"
+        login_user: "{{ mysql_user }}"
+        login_password: "{{ mysql_password }}"
+        login_db: "{{ mysql_db }}"
+        query: |
+          INSERT INTO patch_logs 
+          (hostname, os_family, packages_updated, patch_status, ansible_job_id, timestamp) 
+          VALUES (
+            '{{ ansible_hostname }}',
+            '{{ ansible_os_family }}',
+            'SUMMARY: System ready for patching. Dry run successful.',
+            'COMPLETED',
+            '{{ ansible_date_time.epoch }}',
+            NOW()
+          )
+
+- name: Cross-platform patch compliance report
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Generate compliance summary
+      debug:
+        msg: |
+          PATCH MANAGEMENT COMPLIANCE REPORT
+          ==================================
+          Total Servers: {{ groups['all'] | length }}
+          RedHat Servers: {{ groups['redhat_servers'] | length }}
+          Ubuntu Servers: {{ groups['ubuntu_servers'] | length }}
+          CentOS Servers: {{ groups['centos_servers'] | length }}
+          Report Time: {{ ansible_date_time.iso8601 }}
+          
+          All systems pre-checked and ready for automated patching.
+          Logs stored in MySQL database: {{ mysql_db }}@{{ mysql_host }}

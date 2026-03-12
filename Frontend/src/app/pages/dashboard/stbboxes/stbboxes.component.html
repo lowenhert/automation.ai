@@ -1,188 +1,157 @@
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+<div class="space-y-5">
   <!-- Header Section -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-    <div class="max-w-7xl mx-auto px-6 py-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">STB Boxes</h1>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage and view all Set-Top Box devices</p>
-        </div>
-        <div class="text-sm text-gray-500 dark:text-gray-400">
-          Total Boxes: {{ filteredStbBoxes.length }} / {{ stbBoxes.length }}
-        </div>
+  <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-800 dark:text-white/90">STB Boxes</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage and view all Set-Top Box devices</p>
       </div>
+      <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+        {{ filteredStbBoxes.length }} / {{ stbBoxes.length }} Boxes
+      </span>
     </div>
   </div>
 
   <!-- Filters Section -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-    <div class="max-w-7xl mx-auto px-6 py-6">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- Search Input -->
+  <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-wrap items-end gap-4">
+      <!-- Search Input -->
+      <div class="min-w-[200px] flex-1">
+        <label for="search" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Search</label>
         <div class="relative">
-          <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Search
-          </label>
-          <div class="relative">
-            <input
-              type="text"
-              id="search"
-              name="search"
-              [(ngModel)]="searchTerm"
-              (input)="onSearchChange()"
-              placeholder="Search by model, vendor, or STB number..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
-          </div>
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input
+            type="text" id="search" name="search"
+            [(ngModel)]="searchTerm" (input)="onSearchChange()"
+            placeholder="Search by model, vendor, or STB number..."
+            class="h-[38px] w-full rounded-lg border border-gray-300 bg-transparent pl-9 pr-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] dark:border-gray-700 dark:text-white/90"
+          />
         </div>
+      </div>
 
-        <!-- Vendor Filter -->
-        <div>
-          <label for="vendor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Vendor
-          </label>
-          <select
-            id="vendor"
-            name="vendor"
-            [(ngModel)]="selectedVendor"
-            (change)="onVendorChange()"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Vendors</option>
-            <option *ngFor="let vendor of vendors" [value]="vendor">{{ vendor }}</option>
-          </select>
-        </div>
+      <!-- Vendor Filter -->
+      <div class="min-w-[160px]">
+        <label for="vendor" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor</label>
+        <select
+          id="vendor" name="vendor"
+          [(ngModel)]="selectedVendor" (change)="onVendorChange()"
+          class="h-[38px] w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm text-gray-800 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+        >
+          <option value="">All Vendors</option>
+          <option *ngFor="let vendor of vendors" [value]="vendor">{{ vendor }}</option>
+        </select>
+      </div>
 
-        <!-- Resolution Filter -->
-        <div>
-          <label for="resolution" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Resolution
-          </label>
-          <select
-            id="resolution"
-            name="resolution"
-            [(ngModel)]="selectedResolution"
-            (change)="onResolutionChange()"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Resolutions</option>
-            <option *ngFor="let resolution of resolutions" [value]="resolution">{{ resolution }}</option>
-          </select>
-        </div>
+      <!-- Resolution Filter -->
+      <div class="min-w-[160px]">
+        <label for="resolution" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Resolution</label>
+        <select
+          id="resolution" name="resolution"
+          [(ngModel)]="selectedResolution" (change)="onResolutionChange()"
+          class="h-[38px] w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm text-gray-800 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+        >
+          <option value="">All Resolutions</option>
+          <option *ngFor="let resolution of resolutions" [value]="resolution">{{ resolution }}</option>
+        </select>
+      </div>
 
-        <!-- Clear Filters Button -->
-        <div class="flex items-end">
-          <button
-            (click)="clearFilters()"
-            class="w-full px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors duration-200"
-          >
-            Clear Filters
-          </button>
-        </div>
+      <!-- Clear Filters Button -->
+      <button
+        (click)="clearFilters()"
+        class="h-[38px] rounded-lg bg-[#465FFF] px-5 text-sm font-medium text-white hover:bg-[#3A4FE0] transition-colors"
+      >
+        Clear Filters
+      </button>
     </div>
   </div>
 
   <!-- Loading State -->
-  <div *ngIf="isLoading" class="max-w-7xl mx-auto">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12">
-      <div class="flex justify-center items-center">
-        <div class="flex items-center space-x-3">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span class="text-gray-600 dark:text-gray-400 font-medium">Loading STB boxes...</span>
-        </div>
-      </div>
+  <div *ngIf="isLoading" class="rounded-2xl border border-gray-200 bg-white p-10 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex items-center justify-center gap-3">
+      <div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-[#465FFF]"></div>
+      <span class="text-sm text-gray-500 dark:text-gray-400">Loading STB boxes...</span>
     </div>
   </div>
 
   <!-- Error State -->
-  <div *ngIf="error" class="max-w-7xl mx-auto">
-    <div class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-xl p-6">
-      <div class="flex items-center">
-        <svg class="h-5 w-5 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <span class="text-red-800 dark:text-red-400 font-medium">{{ error }}</span>
-      </div>
+  <div *ngIf="error" class="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-800/40 dark:bg-red-900/10">
+    <div class="flex items-center gap-2">
+      <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span class="text-sm font-medium text-red-700 dark:text-red-400">{{ error }}</span>
     </div>
   </div>
 
   <!-- No Results -->
-  <div *ngIf="!isLoading && !error && filteredStbBoxes.length === 0" class="max-w-7xl mx-auto">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12">
-      <div class="text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-        </svg>
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No STB boxes found</h3>
-        <p class="text-gray-500 dark:text-gray-400">Try adjusting your search criteria or clear the filters.</p>
-      </div>
-    </div>
+  <div *ngIf="!isLoading && !error && filteredStbBoxes.length === 0"
+       class="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-800 dark:bg-white/[0.03]">
+    <svg class="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <h3 class="text-sm font-medium text-gray-800 dark:text-white/90">No STB boxes found</h3>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Try adjusting your search criteria or clear the filters.</p>
   </div>
 
   <!-- STB Boxes Grid -->
-  <div *ngIf="!isLoading && !error && filteredStbBoxes.length > 0" class="max-w-7xl mx-auto pb-8">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      <div *ngFor="let stb of filteredStbBoxes" 
-           class="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden">
-        
-        <!-- Card Header -->
-        <div class="p-6 border-b border-gray-100 dark:border-gray-700">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ stb.model }}</h3>
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+  <div *ngIf="!isLoading && !error && filteredStbBoxes.length > 0">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div *ngFor="let stb of filteredStbBoxes"
+           class="group rounded-2xl border border-gray-200 bg-white overflow-hidden transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03]">
+
+        <!-- Card Top: Model + Badge -->
+        <div class="flex items-center justify-between px-4 pt-4 pb-2">
+          <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">{{ stb.model }}</h3>
+          <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                [ngClass]="{
+                  'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400': stb.resolution === 'HD',
+                  'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400': stb.resolution === 'SD',
+                  'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400': stb.resolution !== 'HD' && stb.resolution !== 'SD'
+                }">
+            <span class="h-1.5 w-1.5 rounded-full"
                   [ngClass]="{
-                    'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400': stb.resolution === 'HD',
-                    'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400': stb.resolution === 'SD',
-                    'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400': stb.resolution !== 'HD' && stb.resolution !== 'SD'
-                  }">
-              <div class="w-2 h-2 rounded-full mr-2"
-                   [ngClass]="{
-                     'bg-green-500': stb.resolution === 'HD',
-                     'bg-blue-500': stb.resolution === 'SD',
-                     'bg-purple-500': stb.resolution !== 'HD' && stb.resolution !== 'SD'
-                   }"></div>
-              {{ stb.resolution }}
-            </span>
-          </div>
-          
-          <!-- STB Image -->
-          <div class="flex justify-center">
-            <img 
-              [src]="getStbImage(stb.resolution)" 
-              [alt]="stb.model + ' STB Box'"
-              class="h-20 w-auto object-contain"
-              (error)="$event.target.src='/images/boxes/Android-Box.jpg'"
-            />
-          </div>
+                    'bg-green-500': stb.resolution === 'HD',
+                    'bg-blue-500': stb.resolution === 'SD',
+                    'bg-purple-500': stb.resolution !== 'HD' && stb.resolution !== 'SD'
+                  }"></span>
+            {{ stb.resolution }}
+          </span>
         </div>
 
-        <!-- Card Body -->
-        <div class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">STB Number</p>
-              <p class="text-lg font-semibold text-gray-900 dark:text-white">#{{ stb.stbNo }}</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Vendor</p>
-              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ stb.vendor }}</p>
-            </div>
+        <!-- STB Image -->
+        <div class="flex justify-center px-4 py-3">
+          <img
+            [src]="getStbImage(stb.resolution)"
+            [alt]="stb.model + ' STB Box'"
+            class="h-16 w-auto object-contain transition-transform group-hover:scale-105"
+            (error)="onImgError($event)"
+          />
+        </div>
+
+        <!-- Divider -->
+        <div class="mx-4 border-t border-gray-100 dark:border-gray-800"></div>
+
+        <!-- Card Info -->
+        <div class="grid grid-cols-2 gap-2 px-4 py-3">
+          <div>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500">STB Number</p>
+            <p class="text-sm font-semibold text-gray-800 dark:text-white/90">#{{ stb.stbNo }}</p>
+          </div>
+          <div>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500">Vendor</p>
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ stb.vendor }}</p>
           </div>
         </div>
 
         <!-- Card Footer -->
-        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700">
-          <button class="w-full px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors duration-200">
+        <div class="border-t border-gray-100 px-4 py-2.5 dark:border-gray-800">
+          <button class="w-full rounded-lg py-1.5 text-xs font-medium text-[#465FFF] hover:bg-[#465FFF]/5 transition-colors dark:text-[#6B7FFF]">
             View Details
           </button>
         </div>
       </div>
-    </div>
     </div>
   </div>
 </div>

@@ -52,4 +52,22 @@ CREATE INDEX idx_vendor_model
 CREATE INDEX idx_resolution
     ON stb_inventory(resolution);
 
+CREATE TABLE ottautomationtestresult (
+                                         id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
+                                         ott_app_name VARCHAR(100),
+                                         content_name VARCHAR(255),
+                                         playback_time_seconds INT,
+                                         timestamp DATETIME,
+                                         device_id VARCHAR(50),
+                                         status VARCHAR(20),
+
+                                         screenshots_folder TEXT,
+                                         error_type VARCHAR(100),
+                                         error_message TEXT,
+                                         failed_step VARCHAR(100),
+
+                                         INDEX idx_app_name (ott_app_name),
+                                         INDEX idx_status (status),
+                                         INDEX idx_timestamp (timestamp)
+);

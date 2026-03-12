@@ -16,7 +16,7 @@ export interface STBBox {
   providedIn: 'root'
 })
 export class StbService {
-  private apiUrl = 'http://localhost:8080/api/stbs';
+  private apiUrl = `${environment.apiUrl}/stbs`;
 
   constructor(private http: HttpClient) { }
 

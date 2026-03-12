@@ -21,6 +21,7 @@ import { SignInComponent } from './pages/auth-pages/sign-in/sign-in.component';
 import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalenderComponent } from './pages/calender/calender.component';
 import { UserManagementComponent } from './pages/user-management/user-management.component';
+import { OttReportComponent } from './pages/dashboard/ott-report/ott-report.component';
 import { authGuard, guestGuard } from './shared/guards/auth.guard';
 import { AdminGuard } from './shared/guards/admin.guard';
 
@@ -32,8 +33,12 @@ export const routes: Routes = [
     children:[
       {
         path: '',
-        component: SummaryComponent,
+        redirectTo: 'stbboxes',
         pathMatch: 'full',
+      },
+      {
+        path: 'summary',
+        component: SummaryComponent,
         title: 'STB Performance Test Summary | Tata Play Dashboard',
       },
       {
@@ -44,12 +49,12 @@ export const routes: Routes = [
       {
         path:'calendar',
         component:CalenderComponent,
-        title:'Angular Calender | TailAdmin - Angular Admin Dashboard Template'
+        title:'Calendar | Tata Play Dashboard'
       },
       {
         path:'profile',
         component:ProfileComponent,
-        title:'Angular Profile Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Profile | Tata Play Dashboard'
       },
       {
         path:'user-management',
@@ -58,65 +63,70 @@ export const routes: Routes = [
         title:'User Management | Tata Play Dashboard'
       },
       {
+        path:'ott-report',
+        component:OttReportComponent,
+        title:'OTT Report | Tata Play Dashboard'
+      },
+      {
         path:'form-elements',
         component:FormElementsComponent,
-        title:'Angular Form Elements Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Form Elements | Tata Play Dashboard'
       },
       {
         path:'basic-tables',
         component:BasicTablesComponent,
-        title:'Angular Basic Tables Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Basic Tables | Tata Play Dashboard'
       },
       {
         path:'blank',
         component:BlankComponent,
-        title:'Angular Blank Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Blank | Tata Play Dashboard'
       },
       // support tickets
       {
         path:'invoice',
         component:InvoicesComponent,
-        title:'Angular Invoice Details Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Invoices | Tata Play Dashboard'
       },
       {
         path:'line-chart',
         component:LineChartComponent,
-        title:'Angular Line Chart Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Line Chart | Tata Play Dashboard'
       },
       {
         path:'bar-chart',
         component:BarChartComponent,
-        title:'Angular Bar Chart Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Bar Chart | Tata Play Dashboard'
       },
       {
         path:'alerts',
         component:AlertsComponent,
-        title:'Angular Alerts Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Alerts | Tata Play Dashboard'
       },
       {
         path:'avatars',
         component:AvatarElementComponent,
-        title:'Angular Avatars Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Avatars | Tata Play Dashboard'
       },
       {
         path:'badge',
         component:BadgesComponent,
-        title:'Angular Badges Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Badges | Tata Play Dashboard'
       },
       {
         path:'buttons',
         component:ButtonsComponent,
-        title:'Angular Buttons Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Buttons | Tata Play Dashboard'
       },
       {
         path:'images',
         component:ImagesComponent,
-        title:'Angular Images Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Images | Tata Play Dashboard'
       },
       {
         path:'videos',
         component:VideosComponent,
-        title:'Angular Videos Dashboard | TailAdmin - Angular Admin Dashboard Template'
+        title:'Videos | Tata Play Dashboard'
       },
     ]
   },
@@ -124,19 +134,18 @@ export const routes: Routes = [
   {
     path:'signin',
     component:SignInComponent,
-    canActivate: [guestGuard], // Prevent access if already authenticated
-    title:'Angular Sign In Dashboard | TailAdmin - Angular Admin Dashboard Template'
+    canActivate: [guestGuard],
+    title:'Sign In | Tata Play Dashboard'
   },
   {
     path:'signup',
     component:SignUpComponent,
-    canActivate: [guestGuard], // Prevent access if already authenticated
-    title:'Angular Sign Up Dashboard | TailAdmin - Angular Admin Dashboard Template'
+    canActivate: [guestGuard],
+    title:'Sign Up | Tata Play Dashboard'
   },
-  // error pages
   {
     path:'**',
     component:NotFoundComponent,
-    title:'Angular NotFound Dashboard | TailAdmin - Angular Admin Dashboard Template'
+    title:'Page Not Found | Tata Play Dashboard'
   },
 ];

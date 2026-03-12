@@ -102,4 +102,8 @@ export class StbboxesComponent implements OnInit {
     this.selectedResolution = '';
     this.applyFilters();
   }
+
+  onImgError(event: Event) {
+    (event.target as HTMLImageElement).src = '/images/boxes/Android-Box.jpg';
+  }
 }

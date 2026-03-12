@@ -1,0 +1,28 @@
+- hosts: centos
+  connection: ssh
+  gather_facts: yes
+  tasks:
+    - name: Check disk usage
+      shell: df -h /
+      register: disk
+    - debug:
+        msg: "Disk Usage: {{ disk.stdout }}"
+
+    - name: Check memory usage
+      shell: free -m
+      register: mem
+    - debug:
+        msg: "Memory Status: {{ mem.stdout }}"
+
+    - name: Check uptime
+      shell: uptime
+      register: up
+    - debug:
+        msg: "Uptime: {{ up.stdout }}"
+
+    - name: Check available updates
+      shell: yum check-update
+      register: updates
+      ignore_errors: yes
+    - debug:
+        msg: "Packages Available: {{ updates.stdout }}"

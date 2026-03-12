@@ -1,0 +1,43 @@
+<div class="grid grid-cols-12 gap-4 md:gap-6">
+  <!-- First Row - Header Section -->
+  <div class="col-span-12">
+    <app-summary-header />
+  </div>
+
+  <!-- Second Row - Test Overview and Performance Summary -->
+  <div class="col-span-12 xl:col-span-6">
+    <app-test-overview />
+  </div>
+  <div class="col-span-12 xl:col-span-6">
+    <app-performance-summary />
+  </div>
+
+  <!-- Third Row - Performance Trends and Boot-up Time KPI (Fixed height for graphs) -->
+  <div class="col-span-12 xl:col-span-6">
+    <div class="h-96">
+      <app-performance-trends />
+    </div>
+  </div>
+  <div class="col-span-12 xl:col-span-6">
+    <div class="h-96">
+      <app-bootup-time-kpi />
+    </div>
+  </div>
+
+  <!-- Last Row - Key Observations, Performance Issues, Final Verdict -->
+  <div class="col-span-12 xl:col-span-4 mt-4">
+    <div class="h-64">
+      <app-key-observations />
+    </div>
+  </div>
+  <div class="col-span-12 xl:col-span-4 mt-4">
+    <div class="h-64">
+      <app-performance-issues />
+    </div>
+  </div>
+  <div class="col-span-12 xl:col-span-4 mt-4">
+    <div class="h-64">
+      <app-final-verdict />
+    </div>
+  </div>
+</div>

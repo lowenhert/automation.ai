@@ -1,13 +1,18 @@
 package com.lowenhert.patchmanagement.core.stbboxes;
+
+import com.lowenhert.patchmanagement.core.config.exception.ConflictException;
+import com.lowenhert.patchmanagement.core.config.exception.ResourceNotFoundException;
 import com.lowenhert.patchmanagement.core.stbboxes.dto.CreateStbRequest;
 import com.lowenhert.patchmanagement.core.stbboxes.dto.StbResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StbInventoryService {
@@ -15,10 +20,10 @@ public class StbInventoryService {
     private final StbInventoryRepository repository;
 
     public StbResponse create(CreateStbRequest request) {
-
         if (repository.existsByVendorAndStbNo(
                 request.getVendor(), request.getStbNo())) {
-            throw new RuntimeException("STB already exists for vendor");
+            log.warn("Duplicate STB: vendor={}, stbNo={}", request.getVendor(), request.getStbNo());
+            throw new ConflictException("STB already exists for vendor '" + request.getVendor() + "' with stbNo " + request.getStbNo());
         }
 
         StbInventory stb = StbInventory.builder()
@@ -29,19 +34,25 @@ public class StbInventoryService {
                 .build();
 
         repository.save(stb);
+        log.info("STB created: uuid={}, vendor={}", stb.getUuid(), stb.getVendor());
         return mapToResponse(stb);
     }
 
     public List<StbResponse> getAll() {
-        return repository.findAll()
+        List<StbResponse> result = repository.findAll()
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+        log.debug("Fetched {} STBs", result.size());
+        return result;
     }
 
     public StbResponse getByUuid(UUID uuid) {
         StbInventory stb = repository.findByUuid(uuid)
-                .orElseThrow(() -> new RuntimeException("STB not found"));
+                .orElseThrow(() -> {
+                    log.warn("STB not found: uuid={}", uuid);
+                    return new ResourceNotFoundException("STB not found with uuid: " + uuid);
+                });
         return mapToResponse(stb);
     }
 
@@ -54,8 +65,12 @@ public class StbInventoryService {
 
     public void delete(UUID uuid) {
         StbInventory stb = repository.findByUuid(uuid)
-                .orElseThrow(() -> new RuntimeException("STB not found"));
+                .orElseThrow(() -> {
+                    log.warn("Delete failed — STB not found: uuid={}", uuid);
+                    return new ResourceNotFoundException("STB not found with uuid: " + uuid);
+                });
         repository.delete(stb);
+        log.info("STB deleted: uuid={}", uuid);
     }
 
     private StbResponse mapToResponse(StbInventory stb) {

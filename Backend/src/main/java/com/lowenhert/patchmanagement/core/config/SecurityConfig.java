@@ -1,11 +1,15 @@
 package com.lowenhert.patchmanagement.core.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lowenhert.patchmanagement.core.auth.JwtTokenFilter;
 import com.lowenhert.patchmanagement.core.auth.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -13,12 +17,15 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -40,12 +47,16 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS)
             )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(authenticationEntryPoint())
+                .accessDeniedHandler(accessDeniedHandler())
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/**",
                     "/ws-scripts/**"
                 ).permitAll()
-                .requestMatchers("/api/users").permitAll() // TEMP: skip JWT for testing
+                .requestMatchers("/api/users").permitAll()
                 .requestMatchers("/api/scripts/**").authenticated()
                 .anyRequest().authenticated()
             )
@@ -53,6 +64,42 @@ public class SecurityConfig {
 
         log.info("Security filter chain configuration completed");
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            log.warn("Unauthorized request to [{}]: {}", request.getRequestURI(), authException.getMessage());
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            ApiErrorResponse body = ApiErrorResponse.builder()
+                    .status(HttpStatus.UNAUTHORIZED.value())
+                    .error(HttpStatus.UNAUTHORIZED.getReasonPhrase())
+                    .message("Authentication required")
+                    .path(request.getRequestURI())
+                    .build();
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+            response.getWriter().write(mapper.writeValueAsString(body));
+        };
+    }
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            log.warn("Access denied to [{}]: {}", request.getRequestURI(), accessDeniedException.getMessage());
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            ApiErrorResponse body = ApiErrorResponse.builder()
+                    .status(HttpStatus.FORBIDDEN.value())
+                    .error(HttpStatus.FORBIDDEN.getReasonPhrase())
+                    .message("Access denied")
+                    .path(request.getRequestURI())
+                    .build();
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+            response.getWriter().write(mapper.writeValueAsString(body));
+        };
     }
 
     @Bean

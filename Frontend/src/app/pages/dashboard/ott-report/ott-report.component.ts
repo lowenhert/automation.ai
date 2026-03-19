@@ -21,11 +21,13 @@ import { Subscription, combineLatest } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { OttService, OttAutomationTestResult } from '../../../shared/services/ott.service';
 import { SidebarService } from '../../../shared/services/sidebar.service';
+import { DatePickerComponent } from '../../../shared/components/form/date-picker/date-picker.component';
+import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-ott-report',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgApexchartsModule],
+  imports: [CommonModule, FormsModule, NgApexchartsModule, DatePickerComponent],
   templateUrl: './ott-report.component.html'
 })
 export class OttReportComponent implements OnInit, OnDestroy {
@@ -190,8 +192,10 @@ export class OttReportComponent implements OnInit, OnDestroy {
     this.error = null;
     this.ottService.getAll().subscribe({
       next: (data) => {
-        this.allResults = data;
-        this.filteredResults = [...data];
+        this.allResults = data.sort((a, b) =>
+          (b.timestamp ?? '').localeCompare(a.timestamp ?? '')
+        );
+        this.filteredResults = [...this.allResults];
         this.extractFilterOptions();
         this.computeSummary();
         this.buildCharts();
@@ -403,6 +407,117 @@ export class OttReportComponent implements OnInit, OnDestroy {
   // ─── Helpers ─────────────────────────────────────────────────────────────
   minVal(a: number, b: number): number {
     return Math.min(a, b);
+  }
+
+  // ─── Date Picker Handler ──────────────────────────────────────────────────
+  onDateChange(event: { selectedDates: Date[]; dateStr: string }): void {
+    this.filterDate = event.dateStr || '';
+  }
+
+  // ─── Excel Download ───────────────────────────────────────────────────────
+  downloadExcel(): void {
+    const wb = XLSX.utils.book_new();
+
+    const autoWidth = (ws: XLSX.WorkSheet): void => {
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      const colWidths: number[] = [];
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        let max = 10;
+        for (let r = range.s.r; r <= range.e.r; r++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (ws[addr]) {
+            const len = String(ws[addr].v ?? '').length + 3;
+            if (len > max) max = len;
+          }
+        }
+        colWidths.push(Math.min(max, 45));
+      }
+      ws['!cols'] = colWidths.map(w => ({ wch: w }));
+    };
+
+    // --- Data Sheet ---
+    const rows = this.filteredResults.map(r => ({
+      'OTT App Name': r.ottAppName,
+      'Content Name': r.contentName,
+      'Playtime (s)': r.playbackTimeSeconds,
+      'Timestamp': r.timestamp,
+      'Device ID': r.deviceId,
+      'Status': r.status,
+      'Error Type': r.errorType ?? '',
+      'Error Message': r.errorMessage ?? '',
+      'Failed Step': r.failedStep ?? 0
+    }));
+    const wsData = XLSX.utils.json_to_sheet(rows);
+    autoWidth(wsData);
+    XLSX.utils.book_append_sheet(wb, wsData, 'OTT Results');
+
+    // --- Summary Sheet ---
+    const summaryRows = [
+      { Metric: 'Total Streams', Value: this.totalStreams },
+      { Metric: 'Success Rate', Value: this.successRate },
+      { Metric: 'Failed Streams', Value: this.failedStreams },
+      { Metric: 'Avg Playtime', Value: this.avgPlaytime }
+    ];
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    wsSummary['!cols'] = [{ wch: 20 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    // --- Daily Stream Attempts Sheet ---
+    const grouped = this.groupByDatePublic(this.filteredResults);
+    const chartRows = [...grouped.entries()].map(([dateKey, items]) => ({
+      'Date': this.dateLabel(dateKey),
+      'Passed': items.filter(r => r.status?.toUpperCase() === 'PASSED').length,
+      'Failed': items.filter(r => r.status?.toUpperCase() === 'FAILED').length,
+      'Total': items.length
+    }));
+    const wsChart = XLSX.utils.json_to_sheet(chartRows);
+    autoWidth(wsChart);
+    XLSX.utils.book_append_sheet(wb, wsChart, 'Daily Stream Attempts');
+
+    // --- Status Breakdown Sheet ---
+    const statusMap = new Map<string, number>();
+    this.filteredResults.forEach(r => {
+      const s = (r.status ?? 'UNKNOWN').toUpperCase();
+      statusMap.set(s, (statusMap.get(s) ?? 0) + 1);
+    });
+    const statusRows = [...statusMap.entries()].map(([status, count]) => ({
+      'Status': status, 'Count': count
+    }));
+    const wsStatus = XLSX.utils.json_to_sheet(statusRows);
+    autoWidth(wsStatus);
+    XLSX.utils.book_append_sheet(wb, wsStatus, 'Status Breakdown');
+
+    // --- Error Breakdown Sheet ---
+    const errorMap = new Map<string, number>();
+    this.filteredResults.forEach(r => {
+      if (r.errorType) {
+        errorMap.set(r.errorType, (errorMap.get(r.errorType) ?? 0) + 1);
+      }
+    });
+    const errorRows = [...errorMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([errorType, count]) => ({ 'Error Type': errorType, 'Count': count }));
+    const wsError = XLSX.utils.json_to_sheet(errorRows);
+    autoWidth(wsError);
+    XLSX.utils.book_append_sheet(wb, wsError, 'Top Errors');
+
+    // --- Avg Duration Sheet ---
+    const avgRows = [...grouped.entries()].map(([dateKey, items]) => {
+      const total = items.reduce((s, r) => s + (r.playbackTimeSeconds ?? 0), 0);
+      return {
+        'Date': this.dateLabel(dateKey),
+        'Avg Duration (s)': items.length ? Math.round(total / items.length) : 0
+      };
+    });
+    const wsAvg = XLSX.utils.json_to_sheet(avgRows);
+    autoWidth(wsAvg);
+    XLSX.utils.book_append_sheet(wb, wsAvg, 'Avg Playback Duration');
+
+    XLSX.writeFile(wb, `OTT_Report_${new Date().toISOString().substring(0, 10)}.xlsx`);
+  }
+
+  groupByDatePublic(results: OttAutomationTestResult[]): Map<string, OttAutomationTestResult[]> {
+    return this.groupByDate(results);
   }
 
   // ─── Status Badge ─────────────────────────────────────────────────────────

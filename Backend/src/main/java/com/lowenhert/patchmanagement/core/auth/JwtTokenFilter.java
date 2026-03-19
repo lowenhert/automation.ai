@@ -1,11 +1,16 @@
 package com.lowenhert.patchmanagement.core.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.lowenhert.patchmanagement.core.config.ApiErrorResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -30,7 +35,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                                    FilterChain filterChain) throws ServletException, IOException {
         
         try {
-            log.debug("Processing request to: {} {}", request.getMethod(), request.getRequestURI());
+            log.debug("Processing request: {} {}", request.getMethod(), request.getRequestURI());
             
             final String authHeader = request.getHeader("Authorization");
             
@@ -41,11 +46,10 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             }
 
             final String token = authHeader.substring(7);
-            log.debug("Extracted JWT token: {}", token);
 
             if (jwtTokenUtil.validateToken(token)) {
                 String username = jwtTokenUtil.getUsernameFromToken(token);
-                log.info("Valid JWT token for user: {}", username);
+                log.debug("Valid JWT token for user: {}", username);
 
                 try {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -62,21 +66,21 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                     );
                     
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("Successfully set authentication in security context");
+                    log.debug("Authentication set for user: {}", username);
                     
                 } catch (UsernameNotFoundException e) {
-                    log.error("User not found: {}", username);
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not found");
+                    log.warn("User from token not found in database: {}", username);
+                    writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "User not found", request.getRequestURI());
                     return;
                 }
             } else {
-                log.warn("Invalid JWT token received");
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                log.warn("Invalid JWT token received for [{}]", request.getRequestURI());
+                writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "Invalid token", request.getRequestURI());
                 return;
             }
         } catch (Exception e) {
-            log.error("Authentication error: {}", e.getMessage(), e);
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed");
+            log.error("Authentication error on [{}]: {}", request.getRequestURI(), e.getMessage());
+            writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "Authentication failed", request.getRequestURI());
             return;
         }
 
@@ -86,9 +90,22 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        log.debug("Checking if should filter path: {}", path);
-        // Add paths that shouldn't be filtered (e.g., public endpoints)
         return path.startsWith("/api/auth/") || 
                path.startsWith("/ws-scripts/");
+    }
+
+    private void writeErrorResponse(HttpServletResponse response, HttpStatus status,
+                                     String message, String path) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        ApiErrorResponse body = ApiErrorResponse.builder()
+                .status(status.value())
+                .error(status.getReasonPhrase())
+                .message(message)
+                .path(path)
+                .build();
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        response.getWriter().write(mapper.writeValueAsString(body));
     }
 }

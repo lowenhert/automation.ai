@@ -42,6 +42,7 @@
     "swiper": "^11.2.10",
     "tailwindcss": "^4.1.11",
     "tslib": "^2.3.0",
+    "xlsx": "^0.18.5",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {

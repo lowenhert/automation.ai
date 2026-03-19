@@ -12,16 +12,15 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final AuthenticationManager authManager;
     private final JwtTokenUtil jwtTokenUtil;
     private final CustomUserDetailsService userDetailsService;
 
     public String login(String username, String password) {
-        logger.info("Attempting login for user: {}", username);
+        log.debug("Authenticating user: {}", username);
 
-        // Let Spring Security throw its own exceptions
         authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
         );
@@ -29,7 +28,7 @@ public class AuthService {
         UserDetails user = userDetailsService.loadUserByUsername(username);
         String token = jwtTokenUtil.generateToken(user.getUsername());
 
-        logger.info("JWT generated for user: {}", username);
+        log.info("Login successful for user: {}", username);
         return token;
     }
 }

@@ -68,7 +68,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     
                     if (authHeader != null && authHeader.startsWith("Bearer ")) {
                         String token = authHeader.substring(7);
-                        log.debug("Extracted JWT token: {}", token);
                         
                         try {
                             if (jwtTokenUtil.validateToken(token)) {

@@ -2,6 +2,8 @@ package com.lowenhert.patchmanagement.core.user;
 
 import java.util.Map;
 
+import com.lowenhert.patchmanagement.core.config.exception.BadRequestException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +23,7 @@ import com.lowenhert.patchmanagement.core.user.dto.UsersListResponse;
 
 import lombok.RequiredArgsConstructor;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -30,20 +33,18 @@ public class UserController {
   
     @PostMapping
     public ResponseEntity<UserResponse> createUser(@RequestBody Map<String, Object> body) {
+        log.info("Received create user request");
         ObjectMapper mapper = new ObjectMapper();
 
-        // Safely extract "data" (prevent NullPointerException)
+        @SuppressWarnings("unchecked")
         Map<String, Object> data = (Map<String, Object>) body.get("data");
         if (data == null) {
-            throw new IllegalArgumentException("Request body must contain 'data' field");
+            throw new BadRequestException("Request body must contain 'data' field");
         }
 
-        // Convert to DTO
         CreateUserRequest request = mapper.convertValue(data, CreateUserRequest.class);
 
-        // Handle missing or optional fields gracefully
         if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-            // Auto-generate username from email or firstName if available
             if (request.getEmail() != null && !request.getEmail().isEmpty()) {
                 request.setUsername(request.getEmail().split("@")[0]);
             } else if (request.getFirstName() != null) {
@@ -53,41 +54,40 @@ public class UserController {
             }
         }
 
-        // Default provider if not given
         if (request.getProvider() == null) {
             request.setProvider("local");
         }
 
-        // Validate password
         if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
-            throw new IllegalArgumentException("Password is required to create a user");
+            throw new BadRequestException("Password is required to create a user");
         }
 
-        // Optional: fill other defaults
         if (request.getRole() == null) {
             request.setRole("user");
         }
 
-        // Finally, call service
-        return ResponseEntity.ok(userService.createUser(request));
+        UserResponse created = userService.createUser(request);
+        log.info("User created successfully: {}", created.getUsername());
+        return ResponseEntity.ok(created);
     }
-
-
 
     @GetMapping
     public ResponseEntity<UsersListResponse> getAllUsers() {
+        log.debug("Fetching all users");
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+        log.debug("Fetching user by id: {}", id);
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        log.info("Delete user request for id: {}", id);
         userService.deleteUser(id);
+        log.info("User deleted: {}", id);
         return ResponseEntity.noContent().build();
     }
     
@@ -95,11 +95,18 @@ public class UserController {
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
+        log.info("Update user request for id: {}", id);
 
+        @SuppressWarnings("unchecked")
         Map<String, Object> data = (Map<String, Object>) body.get("data");
+        if (data == null) {
+            throw new BadRequestException("Request body must contain 'data' field");
+        }
         CreateUserRequest request = new ObjectMapper().convertValue(data, CreateUserRequest.class);
 
-        return ResponseEntity.ok(userService.updateUser(id, request));
+        UserResponse updated = userService.updateUser(id, request);
+        log.info("User updated successfully: {}", id);
+        return ResponseEntity.ok(updated);
     }
     
     @GetMapping("/me")
@@ -107,16 +114,13 @@ public class UserController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).build(); // Unauthorized
+            log.warn("Unauthenticated /me request");
+            return ResponseEntity.status(401).build();
         }
 
         String username = authentication.getName();
+        log.debug("Fetching current user profile: {}", username);
         UserResponse user = userService.getUserByUsername(username);
-
-        if (user == null) {
-            return ResponseEntity.notFound().build();
-        }
-
         return ResponseEntity.ok(user);
     }
 

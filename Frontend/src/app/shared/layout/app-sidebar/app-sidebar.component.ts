@@ -47,6 +47,14 @@ export class AppSidebarComponent {
       subItems: [
         { name: "OTT Report", path: "/ott-report" }
       ],
+    },
+    {
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 3C2.89543 3 2 3.89543 2 5V15C2 16.1046 2.89543 17 4 17H10V19H8C7.44772 19 7 19.4477 7 20C7 20.5523 7.44772 21 8 21H16C16.5523 21 17 20.5523 17 20C17 19.4477 16.5523 19 16 19H14V17H20C21.1046 17 22 16.1046 22 15V5C22 3.89543 21.1046 3 20 3H4ZM20 5H4V15H20V5ZM7 7H9V9H7V7ZM11 7H13V9H11V7ZM15 7H17V9H15V7ZM7 11H9V13H7V11ZM11 11H13V13H11V11ZM15 11H17V13H15V11Z" fill="currentColor"/></svg>`,
+      name: "STB Automation",
+      subItems: [
+        { name: "STB Box Live View", path: "/stb-live-view" },
+        { name: "STB Executions", path: "/stb-executions" }
+      ],
     }
   ];
   // Others nav items

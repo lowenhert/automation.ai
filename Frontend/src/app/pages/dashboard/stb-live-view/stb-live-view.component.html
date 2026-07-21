@@ -1,0 +1,42 @@
+<div class="p-5 space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">STB Box Live View</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        RTSP to Web Streamer &mdash; 8-channel HLS dashboard. Double-click a slot to open remote control.
+      </p>
+    </div>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+      <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+      8 Channels Live
+    </span>
+  </div>
+
+  <!-- Grid of 8 slots -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div *ngFor="let ch of channels"
+         (dblclick)="openSlotDetail(ch.slot)"
+         class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all">
+      <!-- Slot Header -->
+      <div class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Slot {{ ch.slot }}</span>
+        <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+          Live
+        </span>
+      </div>
+
+      <!-- Iframe Embed -->
+      <div class="relative w-full" style="padding-top: 56.25%;">
+        <iframe
+          [src]="ch.embedUrl | safeResource"
+          class="absolute inset-0 w-full h-full"
+          allow="autoplay; fullscreen"
+          frameborder="0"
+          [title]="'Channel ' + ch.slot + ' Live Stream'">
+        </iframe>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,544 @@
+<div class="space-y-5">
+
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <!-- PAGE HEADER                                                  -->
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!showDetail"
+    class="rounded-2xl border border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-bold text-gray-800 dark:text-white tracking-wide">STB Test Automation</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+        Run, track, and manage Tata Play Long Run test modules
+      </p>
+    </div>
+    <div class="flex items-center gap-3 text-sm">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <span class="text-gray-500 dark:text-gray-400">Executions:</span>
+        <span class="font-bold text-gray-800 dark:text-white">{{ executions.length }}</span>
+      </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <span class="text-gray-500 dark:text-gray-400">Pass Rate:</span>
+        <span class="font-bold text-green-600 dark:text-green-400">{{ getPassRate() }}</span>
+      </div>
+      <div *ngIf="activeExecutions.length > 0"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+        <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+        <span class="font-medium text-blue-600 dark:text-blue-400">{{ activeExecutions.length }} running</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <!-- TABS                                                         -->
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!showDetail" class="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+    <button (click)="activeTab = 'run'"
+      class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors"
+      [ngClass]="activeTab === 'run' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
+      🚀 Run Tests
+    </button>
+    <button (click)="activeTab = 'history'"
+      class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors"
+      [ngClass]="activeTab === 'history' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
+      📋 Execution History
+    </button>
+    <button (click)="activeTab = 'test-cases'"
+      class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors"
+      [ngClass]="activeTab === 'test-cases' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
+      📦 Test Cases
+    </button>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <!-- TAB: RUN TESTS                                               -->
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'run' && !showDetail" class="space-y-5">
+
+    <!-- Active Executions Banner -->
+    <div *ngIf="activeExecutions.length > 0"
+      class="rounded-2xl border border-blue-200 bg-blue-50/50 dark:border-blue-800/40 dark:bg-blue-900/10 p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+        <span class="text-sm font-semibold text-blue-700 dark:text-blue-300">Active Executions</span>
+      </div>
+      <div class="space-y-2">
+        <div *ngFor="let ae of activeExecutions"
+          class="flex items-center justify-between rounded-xl bg-white dark:bg-gray-800/50 px-4 py-2.5 cursor-pointer hover:shadow-sm transition-shadow"
+          (click)="viewExecution(ae)">
+          <div class="flex items-center gap-3">
+            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold" [ngClass]="statusColor(ae.status)">
+              {{ ae.status }}
+            </span>
+            <span class="text-sm font-medium text-gray-800 dark:text-white">{{ ae.executionName }}</span>
+            <span class="text-xs text-gray-400">{{ getBoxLabel(ae.stbNo) }}</span>
+          </div>
+          <div class="flex items-center gap-4 text-xs">
+            <span class="text-green-600 font-semibold">{{ ae.passed }}P</span>
+            <span class="text-red-600 font-semibold">{{ ae.failed }}F</span>
+            <div class="w-24 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div class="h-full rounded-full bg-blue-500 transition-all" [style.width.%]="getProgressPercent(ae)"></div>
+            </div>
+            <span class="text-gray-400">{{ getProgressPercent(ae) }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div *ngIf="createError"
+      class="rounded-2xl border border-red-200 bg-red-50 dark:border-red-800/40 dark:bg-red-900/10 px-5 py-3 text-sm text-red-600 dark:text-red-400 flex items-center justify-between">
+      {{ createError }}
+      <button (click)="createError = null" class="text-red-400 hover:text-red-600 ml-3">✕</button>
+    </div>
+    <div *ngIf="createSuccess"
+      class="rounded-2xl border border-green-200 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10 px-5 py-3 text-sm text-green-600 dark:text-green-400 flex items-center justify-between">
+      {{ createSuccess }}
+      <button (click)="createSuccess = null" class="text-green-400 hover:text-green-600 ml-3">✕</button>
+    </div>
+
+    <!-- ─── Step 1: Select Test Modules ──────────────────────────── -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">Step 1 — Select Test Modules</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Choose which Long Run Automation modules to execute</p>
+        </div>
+        <button (click)="selectAllModules()"
+          class="text-xs font-medium text-[#465FFF] hover:underline px-3 py-1 rounded-lg hover:bg-[#465FFF]/5">
+          {{ selectedModules.size === testModules.length ? 'Deselect All' : 'Select All (' + testModules.length + ')' }}
+        </button>
+      </div>
+
+      <!-- Category Groups -->
+      <div *ngFor="let cat of moduleCategories" class="mb-4 last:mb-0">
+        <h3 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{{ cat }}</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div *ngFor="let mod of getCategoryModules(cat)" (click)="toggleModule(mod.key)"
+            class="relative flex flex-col gap-1 rounded-xl border p-3.5 cursor-pointer transition-all hover:shadow-sm"
+            [ngClass]="selectedModules.has(mod.key)
+              ? 'border-[#465FFF] bg-[#465FFF]/[0.03] shadow-sm ring-1 ring-[#465FFF]/30 dark:border-[#465FFF] dark:bg-[#465FFF]/10'
+              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'">
+
+            <!-- Checkbox -->
+            <div class="absolute top-3 right-3">
+              <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors"
+                [ngClass]="selectedModules.has(mod.key) ? 'border-[#465FFF] bg-[#465FFF]' : 'border-gray-300 dark:border-gray-600'">
+                <svg *ngIf="selectedModules.has(mod.key)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-lg">{{ mod.icon }}</span>
+              <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ mod.name }}</span>
+            </div>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed pr-6">{{ mod.description }}</p>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{{ mod.steps }} steps</span>
+              <span class="text-[10px] text-gray-400">{{ mod.testFile }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Step 2: Configure Execution ──────────────────────────── -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4">Step 2 — Configure &amp; Execute</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <!-- Execution Name -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">EXECUTION NAME *</label>
+          <input type="text" [(ngModel)]="execName" placeholder="e.g. Long Run Test — Batch 1"
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <!-- Target STB Box -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">TARGET STB BOX *</label>
+          <select [(ngModel)]="execStbNo" (ngModelChange)="onBoxChange()"
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none">
+            <option [ngValue]="null">Select a box...</option>
+            <option *ngFor="let box of stbBoxes" [ngValue]="box.stbNo">{{ box.model }} (#{{ box.stbNo }}) — {{ box.resolution }}</option>
+          </select>
+        </div>
+        <!-- ADB Device ID -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ADB DEVICE ID *</label>
+          <input type="text" [(ngModel)]="execDeviceId" placeholder="e.g. 172.18.1.75:5555"
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <!-- Notes -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">NOTES</label>
+          <input type="text" [(ngModel)]="execNotes" placeholder="Optional notes..."
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+        <span class="text-xs text-gray-400">
+          {{ selectedModules.size }} module{{ selectedModules.size !== 1 ? 's' : '' }} selected
+          <span *ngIf="selectedModules.size > 0"> · ~{{ selectedModules.size * 8 }} steps total</span>
+        </span>
+        <button (click)="createAndTrigger()" [disabled]="creating"
+          class="h-[40px] px-8 text-sm font-semibold text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2">
+          <svg *ngIf="!creating" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span *ngIf="creating" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          {{ creating ? 'Creating...' : 'Execute Tests' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <!-- TAB: EXECUTION HISTORY                                       -->
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'history' && !showDetail" class="space-y-4">
+
+    <!-- Filters Bar -->
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-3 dark:border-gray-800 dark:bg-white/[0.03] flex flex-wrap items-center gap-3">
+      <div class="relative flex-1 min-w-[200px]">
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" [(ngModel)]="executionSearch" (input)="applyFilters()" placeholder="Search executions..."
+          class="h-[38px] w-full rounded-lg border border-gray-300 bg-transparent pl-9 pr-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] dark:border-gray-700 dark:text-white/90" />
+      </div>
+      <select [(ngModel)]="filterStatus" (ngModelChange)="applyFilters()"
+        class="text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none">
+        <option value="">All Status</option>
+        <option value="PENDING">Pending</option>
+        <option value="RUNNING">Running</option>
+        <option value="COMPLETED">Completed</option>
+        <option value="FAILED">Failed</option>
+        <option value="CANCELLED">Cancelled</option>
+      </select>
+      <select [(ngModel)]="filterStbNo" (ngModelChange)="onSlotFilterChange()"
+        class="text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none">
+        <option [ngValue]="null">All Slots</option>
+        <option *ngFor="let box of stbBoxes" [ngValue]="box.stbNo">{{ box.model }} (#{{ box.stbNo }})</option>
+      </select>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="executionsLoading" class="rounded-2xl border border-gray-200 bg-white p-10 dark:border-gray-800 dark:bg-white/[0.03] flex justify-center">
+      <div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-[#465FFF]"></div>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="!executionsLoading && filteredExecutions.length === 0"
+      class="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-800 dark:bg-white/[0.03]">
+      <p class="text-sm text-gray-500 dark:text-gray-400">No executions found.</p>
+    </div>
+
+    <!-- Executions Table -->
+    <div *ngIf="!executionsLoading && filteredExecutions.length > 0"
+      class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.02]">
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Execution</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Box / Slot</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Total</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">P / F / S</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Duration</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Created</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-16"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let exec of filteredExecutions"
+              class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
+              (click)="viewExecution(exec)">
+              <td class="px-5 py-3">
+                <p class="font-medium text-gray-800 dark:text-white">{{ exec.executionName }}</p>
+                <p *ngIf="exec.triggeredBy" class="text-xs text-gray-400">by {{ exec.triggeredBy }}</p>
+              </td>
+              <td class="px-3 py-3 text-gray-600 dark:text-gray-300 text-xs">{{ getBoxLabel(exec.stbNo) }}</td>
+              <td class="px-3 py-3 text-center">
+                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold" [ngClass]="statusColor(exec.status)">
+                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="statusDotColor(exec.status)"></span>
+                  {{ exec.status }}
+                </span>
+              </td>
+              <td class="px-3 py-3 text-center font-semibold text-gray-800 dark:text-white">{{ exec.totalTests }}</td>
+              <td class="px-3 py-3 text-center text-xs">
+                <span class="text-green-600 font-semibold">{{ exec.passed }}</span>
+                <span class="text-gray-400 mx-0.5">/</span>
+                <span class="text-red-600 font-semibold">{{ exec.failed }}</span>
+                <span class="text-gray-400 mx-0.5">/</span>
+                <span class="text-gray-500">{{ exec.skipped }}</span>
+              </td>
+              <td class="px-3 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">{{ formatDuration(exec.durationSeconds) }}</td>
+              <td class="px-3 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">{{ exec.createdAt }}</td>
+              <td class="px-3 py-3 text-center" (click)="$event.stopPropagation()">
+                <button (click)="deleteExecution(exec)" title="Delete"
+                  class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <!-- TAB: TEST CASES                                              -->
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'test-cases' && !showDetail" class="space-y-4">
+
+    <!-- Add Test Case Form -->
+    <div *ngIf="showAddTestCase" class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Add New Test Case</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">MODULE NAME *</label>
+          <input type="text" [(ngModel)]="newTcModule" placeholder="e.g. Parental Lock"
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">TEST NAME *</label>
+          <input type="text" [(ngModel)]="newTcName" placeholder="e.g. Parental Lock Setup"
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">CATEGORY</label>
+          <input type="text" [(ngModel)]="newTcCategory" placeholder="e.g. Security"
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">DESCRIPTION</label>
+          <input type="text" [(ngModel)]="newTcDesc" placeholder="Brief description..."
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">TOTAL STEPS</label>
+          <input type="number" [(ngModel)]="newTcSteps" placeholder="e.g. 10"
+            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button (click)="showAddTestCase = false"
+          class="h-[36px] px-4 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700">Cancel</button>
+        <button (click)="addTestCase()"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] rounded-lg hover:bg-[#3A4FE0]">Save Test Case</button>
+      </div>
+    </div>
+
+    <!-- Test Cases Table -->
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ testCases.length }} Test Case{{ testCases.length !== 1 ? 's' : '' }}</h2>
+        <button (click)="showAddTestCase = true"
+          class="h-[34px] px-4 text-xs font-medium text-white bg-[#465FFF] rounded-lg hover:bg-[#3A4FE0] transition-colors">
+          + Add Test Case
+        </button>
+      </div>
+
+      <div *ngIf="testCasesLoading" class="flex justify-center py-8">
+        <div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-[#465FFF]"></div>
+      </div>
+
+      <div *ngIf="!testCasesLoading && testCases.length === 0" class="py-10 text-center text-sm text-gray-400">
+        No test cases yet. Click "Add Test Case" above.
+      </div>
+
+      <div *ngIf="!testCasesLoading && testCases.length > 0" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.02]">
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Module</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Test Name</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Category</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Steps</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Enabled</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-16"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let tc of testCases" class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+              <td class="px-5 py-3 font-medium text-gray-800 dark:text-white">{{ tc.moduleName }}</td>
+              <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ tc.testName }}</td>
+              <td class="px-3 py-3 text-gray-500 dark:text-gray-400">{{ tc.category || '—' }}</td>
+              <td class="px-3 py-3 text-center text-gray-600 dark:text-gray-300">{{ tc.totalSteps || '—' }}</td>
+              <td class="px-3 py-3 text-center">
+                <button (click)="toggleTc(tc)"
+                  class="w-10 h-5 rounded-full transition-colors relative"
+                  [ngClass]="tc.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
+                  <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
+                    [ngClass]="tc.enabled ? 'left-5' : 'left-0.5'"></span>
+                </button>
+              </td>
+              <td class="px-3 py-3 text-center">
+                <button (click)="deleteTc(tc)" title="Delete"
+                  class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <!-- DETAIL VIEW: Execution Results                               -->
+  <!-- ═════════════════════════════════════════════════════════════ -->
+  <div *ngIf="showDetail && selectedExecution" class="space-y-5">
+
+    <!-- Detail Header -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <button (click)="closeDetail()"
+            class="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-[#465FFF] transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <div class="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
+          <div>
+            <h1 class="text-lg font-bold text-gray-800 dark:text-white">{{ selectedExecution.executionName }}</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ getBoxLabel(selectedExecution.stbNo) }} · {{ selectedExecution.createdAt }}</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" [ngClass]="statusColor(selectedExecution.status)">
+          <span class="w-2 h-2 rounded-full" [ngClass]="statusDotColor(selectedExecution.status)"></span>
+          {{ selectedExecution.status }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+        <p class="text-xs text-gray-400 uppercase">Total</p>
+        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ selectedExecution.totalTests }}</p>
+      </div>
+      <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+        <p class="text-xs text-gray-400 uppercase">Passed</p>
+        <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ selectedExecution.passed }}</p>
+      </div>
+      <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+        <p class="text-xs text-gray-400 uppercase">Failed</p>
+        <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ selectedExecution.failed }}</p>
+      </div>
+      <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+        <p class="text-xs text-gray-400 uppercase">Skipped</p>
+        <p class="text-2xl font-bold text-gray-500">{{ selectedExecution.skipped }}</p>
+      </div>
+      <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+        <p class="text-xs text-gray-400 uppercase">Duration</p>
+        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ formatDuration(selectedExecution.durationSeconds) }}</p>
+      </div>
+    </div>
+
+    <!-- Progress Bar (for RUNNING) -->
+    <div *ngIf="selectedExecution.status === 'RUNNING'" class="rounded-2xl border border-blue-200 bg-blue-50/30 dark:border-blue-800/30 dark:bg-blue-900/10 p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-blue-700 dark:text-blue-300">Execution in progress...</span>
+        <span class="text-xs text-blue-500">{{ getProgressPercent(selectedExecution) }}%</span>
+      </div>
+      <div class="w-full h-2 rounded-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden">
+        <div class="h-full rounded-full bg-blue-500 transition-all duration-500" [style.width.%]="getProgressPercent(selectedExecution)"></div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div *ngIf="selectedExecution.notes" class="rounded-2xl border border-gray-200 bg-white px-5 py-3 dark:border-gray-800 dark:bg-white/[0.03]">
+      <p class="text-xs text-gray-400 uppercase mb-1">Notes</p>
+      <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ selectedExecution.notes }}</p>
+    </div>
+
+    <!-- Module-wise Grouped Results -->
+    <div *ngIf="groupedResults.length > 0" class="space-y-3">
+      <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Module-wise Results</h2>
+
+      <div *ngFor="let g of groupedResults"
+        class="rounded-2xl border bg-white dark:bg-white/[0.03] overflow-hidden transition-colors"
+        [ngClass]="g.failed > 0 ? 'border-red-200 dark:border-red-800/30' : 'border-gray-200 dark:border-gray-800'">
+
+        <!-- Module Header -->
+        <div (click)="toggleGroupExpand(g)"
+          class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
+          <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-90]="g.expanded" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ g.module }}</span>
+            <span class="text-xs text-gray-400">({{ g.results.length }} steps)</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs">
+            <span class="text-green-600 font-semibold">{{ g.passed }} passed</span>
+            <span *ngIf="g.failed > 0" class="text-red-600 font-semibold">{{ g.failed }} failed</span>
+            <span *ngIf="g.skipped > 0" class="text-gray-500">{{ g.skipped }} skipped</span>
+            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold"
+              [ngClass]="g.failed > 0 ? 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30' : 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30'">
+              {{ g.failed > 0 ? 'FAILED' : 'PASSED' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Module Steps (expanded) -->
+        <div *ngIf="g.expanded" class="border-t border-gray-100 dark:border-gray-800">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50/50 dark:bg-white/[0.02]">
+                <th class="px-5 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase w-16">Step</th>
+                <th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase">Step Name</th>
+                <th class="px-3 py-2 text-center text-[10px] font-semibold text-gray-400 uppercase w-20">Status</th>
+                <th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase w-20">Time</th>
+                <th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase">Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of g.results"
+                class="border-t border-gray-50 dark:border-gray-700/50"
+                [class.bg-red-50]="r.status === 'FAILED'"
+                [class.dark:bg-red-900/10]="r.status === 'FAILED'">
+                <td class="px-5 py-2 font-mono text-xs text-gray-500">#{{ r.stepNumber }}</td>
+                <td class="px-3 py-2 text-gray-800 dark:text-white font-medium text-xs">{{ r.stepName }}</td>
+                <td class="px-3 py-2 text-center">
+                  <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold" [ngClass]="statusColor(r.status)">
+                    {{ r.status }}
+                  </span>
+                </td>
+                <td class="px-3 py-2 text-xs text-gray-400">{{ r.durationMs ? r.durationMs + 'ms' : '—' }}</td>
+                <td class="px-3 py-2 text-xs text-red-500 dark:text-red-400 max-w-[250px] truncate" [title]="r.errorMessage || ''">
+                  {{ r.errorMessage || '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty Results -->
+    <div *ngIf="!detailLoading && executionResults.length === 0"
+      class="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-800 dark:bg-white/[0.03]">
+      <p class="text-sm text-gray-500 dark:text-gray-400">No results recorded for this execution yet.</p>
+      <p *ngIf="selectedExecution.status === 'RUNNING' || selectedExecution.status === 'PENDING'"
+        class="text-xs text-gray-400 mt-1">Results will appear here as the test runner reports them.</p>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="detailLoading" class="flex justify-center py-8">
+      <div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-[#465FFF]"></div>
+    </div>
+  </div>
+</div>

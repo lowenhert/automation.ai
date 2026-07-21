@@ -74,6 +74,16 @@
   </div>
 
   <!-- ── Charts Row ──────────────────────────────────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-3 dark:border-gray-800 dark:bg-white/[0.03] flex items-center justify-between mb-1">
+    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Charts Overview</h2>
+    <div class="flex items-center gap-2">
+      <label class="text-xs font-medium text-gray-500 dark:text-gray-400">DATE RANGE:</label>
+      <select [(ngModel)]="chartDaysFilter" (ngModelChange)="onChartDaysFilterChange()"
+        class="text-sm h-[34px] px-3 pr-8 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none">
+        <option *ngFor="let opt of chartDaysOptions" [ngValue]="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
+  </div>
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
     <!-- Daily Stream Attempts -->

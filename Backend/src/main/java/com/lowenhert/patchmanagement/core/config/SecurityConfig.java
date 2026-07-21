@@ -54,6 +54,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/**",
+                    "/api/adb/**",
+                    "/api/stb-reports/**",
+                    "/api/stb-executions/**",
                     "/ws-scripts/**"
                 ).permitAll()
                 .requestMatchers("/api/users").permitAll()

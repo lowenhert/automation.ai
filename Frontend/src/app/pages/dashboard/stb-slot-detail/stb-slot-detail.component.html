@@ -1,0 +1,209 @@
+<div class="p-5 space-y-4">
+  <!-- Header -->
+  <div class="flex items-center gap-3">
+    <button (click)="goBack()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div>
+      <h2 class="text-xl font-bold text-gray-800 dark:text-white">Slot {{ slot }} — Live Stream & Remote</h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Double-click from grid view to control this STB box</p>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="flex flex-col lg:flex-row gap-4 lg:items-start">
+    <!-- Left: Live Stream -->
+    <div class="flex-1 min-w-0">
+      <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
+        <div class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+          <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Channel {{ slot }} Stream</span>
+          <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+            Live
+          </span>
+        </div>
+        <div class="relative w-full" style="padding-top: 56.25%;">
+          <iframe
+            [src]="embedUrl | safeResource"
+            class="absolute inset-0 w-full h-full"
+            allow="autoplay; fullscreen"
+            frameborder="0"
+            [title]="'Channel ' + slot + ' Live Stream'">
+          </iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Remote Control -->
+    <div class="w-full lg:w-56 shrink-0 flex flex-col">
+      <!-- ADB Connection -->
+      <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 mb-3 overflow-hidden">
+        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1.5">ADB Connection</h3>
+        <div class="flex gap-1.5 min-w-0">
+          <input
+            type="text"
+            [(ngModel)]="adbIp"
+            placeholder="192.168.x.x"
+            [disabled]="connected"
+            class="min-w-0 flex-1 px-2 py-1 text-[11px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-1 focus:ring-blue-400 focus:outline-none disabled:opacity-50">
+          <button
+            *ngIf="!connected"
+            (click)="connectAdb()"
+            [disabled]="connecting"
+            class="shrink-0 px-2 py-1 text-[11px] font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap">
+            {{ connecting ? '...' : 'Connect' }}
+          </button>
+          <button
+            *ngIf="connected"
+            (click)="disconnectAdb()"
+            class="shrink-0 px-2 py-1 text-[11px] font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors whitespace-nowrap">
+            Disconnect
+          </button>
+        </div>
+        <p *ngIf="statusMessage" class="mt-1 text-[10px]" [class.text-green-600]="connected" [class.text-red-500]="!connected">
+          {{ statusMessage }}
+        </p>
+      </div>
+
+      <!-- Remote Body — Exact Tata Play Binge Remote -->
+      <div class="remote-body mx-auto w-[180px] rounded-[40px] bg-gradient-to-b from-[#3a3a3a] via-[#2a2a2a] to-[#1e1e1e] shadow-[0_8px_32px_rgba(0,0,0,0.5)] px-5 pt-6 pb-8 flex flex-col items-center"
+           [class.opacity-40]="!connected" [class.pointer-events-none]="!connected">
+
+        <!-- Row 1: TV icon | Binge | Power -->
+        <div class="flex items-center justify-between w-full mb-4">
+          <button (click)="sendKey(remoteButtons.guide)"
+            class="w-8 h-8 rounded-full bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-gray-700/50 text-gray-400 flex items-center justify-center transition-colors active:scale-95"
+            title="TV/Guide">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+          </button>
+          <span class="text-[9px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-500 tracking-wider">Binge</span>
+          <button (click)="sendKey(remoteButtons.power)"
+            class="w-8 h-8 rounded-full bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-gray-700/50 text-gray-400 flex items-center justify-center transition-colors active:scale-95"
+            title="Power">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M12 3v5"/><path d="M17.66 6.34A8 8 0 1 1 6.34 6.34"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Row 2: Netflix | Prime Video -->
+        <div class="flex items-center justify-center gap-2 mb-4">
+          <button (click)="sendKey(remoteButtons.red)"
+            class="px-2 py-0.5 rounded bg-[#E50914] hover:brightness-110 text-white text-[7px] font-bold tracking-wider transition-all active:scale-95 shadow">
+            NETFLIX
+          </button>
+          <button (click)="sendKey(remoteButtons.blue)"
+            class="px-1.5 py-0.5 rounded bg-[#00A8E1] hover:brightness-110 text-white text-[7px] font-bold tracking-wide transition-all active:scale-95 shadow">
+            prime video
+          </button>
+        </div>
+
+        <!-- Row 3: Play/Pause (small, left of center) + Record dot -->
+        <div class="flex items-center justify-center gap-3 mb-3">
+          <button (click)="sendKey(remoteButtons.play)"
+            class="w-7 h-7 rounded-full bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-gray-700/50 text-gray-400 text-[9px] flex items-center justify-center transition-colors active:scale-95"
+            title="Play/Pause">
+            ▶❚❚
+          </button>
+          <span class="w-2 h-2 rounded-full bg-pink-500/80"></span>
+        </div>
+
+        <!-- D-pad — Circular navigation ring -->
+        <div class="relative w-[130px] h-[130px] mb-3">
+          <!-- Outer dark ring -->
+          <div class="absolute inset-0 rounded-full bg-[#0a0a0a] shadow-[inset_0_2px_10px_rgba(0,0,0,0.9),0_1px_3px_rgba(255,255,255,0.05)]"></div>
+          
+          <!-- Up arrow -->
+          <button (click)="sendKey(remoteButtons.up)"
+            class="absolute top-[6px] left-1/2 -translate-x-1/2 w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-200 hover:bg-white/5 transition-all z-10 active:scale-90">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+          </button>
+          <!-- Down arrow -->
+          <button (click)="sendKey(remoteButtons.down)"
+            class="absolute bottom-[6px] left-1/2 -translate-x-1/2 w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-200 hover:bg-white/5 transition-all z-10 active:scale-90">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          </button>
+          <!-- Left arrow -->
+          <button (click)="sendKey(remoteButtons.left)"
+            class="absolute left-[6px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-200 hover:bg-white/5 transition-all z-10 active:scale-90">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+          </button>
+          <!-- Right arrow -->
+          <button (click)="sendKey(remoteButtons.right)"
+            class="absolute right-[6px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-200 hover:bg-white/5 transition-all z-10 active:scale-90">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+          </button>
+          <!-- Center SELECT -->
+          <button (click)="sendKey(remoteButtons.ok)"
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50px] h-[50px] rounded-full bg-[#1a1a1a] border border-gray-700/60 hover:bg-[#252525] text-gray-400 text-[8px] font-bold tracking-widest shadow-md transition-all z-20 active:scale-95">
+            SELECT
+          </button>
+        </div>
+
+        <!-- Pink dots (below d-pad) -->
+        <div class="flex gap-0.5 mb-3">
+          <span class="w-1 h-1 rounded-full bg-pink-500"></span>
+          <span class="w-1 h-1 rounded-full bg-pink-500"></span>
+          <span class="w-1 h-1 rounded-full bg-pink-500"></span>
+        </div>
+
+        <!-- Row: Back | Google dots | Info -->
+        <div class="flex items-center justify-between w-full mb-3">
+          <button (click)="sendKey(remoteButtons.back)"
+            class="w-7 h-7 rounded-full bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-gray-700/50 text-gray-500 flex items-center justify-center transition-colors active:scale-95"
+            title="Back">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <!-- Google Assistant colored dots -->
+          <div class="flex items-center gap-[3px]">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#4285F4]"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#EA4335]"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#F9AB00]"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#34A853]"></span>
+          </div>
+          <button (click)="sendKey(remoteButtons.info)"
+            class="w-7 h-7 rounded-full bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-gray-700/50 text-gray-500 flex items-center justify-center transition-colors active:scale-95 text-[10px] font-serif italic"
+            title="Info">
+            i
+          </button>
+        </div>
+
+        <!-- Row: R button | Home -->
+        <div class="flex items-center justify-between w-full mb-4">
+          <button (click)="sendKey(remoteButtons.home)"
+            class="w-7 h-7 rounded-full bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-gray-700/50 text-gray-500 flex items-center justify-center transition-colors active:scale-95"
+            title="Home">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l-10 9h3v9h6v-6h2v6h6v-9h3z"/></svg>
+          </button>
+          <div class="flex-1"></div>
+          <button (click)="sendKey(remoteButtons.menu)"
+            class="w-7 h-7 rounded-full bg-[#D32F2F] hover:bg-[#E53935] text-white flex items-center justify-center transition-colors active:scale-95 text-[9px] font-bold"
+            title="Record/Menu">
+            R
+          </button>
+        </div>
+
+        <!-- Number Pad -->
+        <div class="grid grid-cols-3 gap-[6px] w-full max-w-[130px] mb-3">
+          <button *ngFor="let n of [1,2,3,4,5,6,7,8,9]" (click)="sendKey(getNumKey(n))"
+            class="h-[30px] rounded-full bg-[#1e1e1e] hover:bg-[#2e2e2e] border border-gray-700/40 text-gray-300 text-[11px] font-medium transition-colors active:scale-95">
+            {{ n }}
+          </button>
+          <div></div>
+          <button (click)="sendKey(remoteButtons.num0)"
+            class="h-[30px] rounded-full bg-[#1e1e1e] hover:bg-[#2e2e2e] border border-gray-700/40 text-gray-300 text-[11px] font-medium transition-colors active:scale-95">
+            0
+          </button>
+          <div></div>
+        </div>
+
+        <!-- TATA PLAY -->
+        <div class="mt-2">
+          <span class="text-[9px] font-bold text-gray-600 tracking-[0.15em]">TATA PLAY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

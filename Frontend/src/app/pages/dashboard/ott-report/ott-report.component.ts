@@ -57,6 +57,16 @@ export class OttReportComponent implements OnInit, OnDestroy {
   appOptions: string[] = [];
   errorTypeOptions: string[] = [];
 
+  // ─── Chart Date Range Filter ──────────────────────────────────────────
+  chartDaysFilter: number = 15;
+  chartDaysOptions = [
+    { label: 'Last 7 Days', value: 7 },
+    { label: 'Last 15 Days', value: 15 },
+    { label: 'Last 30 Days', value: 30 },
+    { label: 'Last 60 Days', value: 60 },
+    { label: 'All Days', value: 0 }
+  ];
+
   // ─── Table / Pagination ───────────────────────────────────────────────────
   pageSize = 10;
   currentPage = 1;
@@ -231,6 +241,21 @@ export class OttReportComponent implements OnInit, OnDestroy {
     this.avgPlaytime = avgSecs.toFixed(1) + 's';
   }
 
+  // ─── Chart Days Filter Handler ────────────────────────────────────────
+  onChartDaysFilterChange(): void {
+    this.buildCharts();
+  }
+
+  private getChartFilteredResults(): OttAutomationTestResult[] {
+    if (this.chartDaysFilter === 0) return this.filteredResults;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - this.chartDaysFilter);
+    const cutoffStr = cutoff.toISOString().substring(0, 10);
+    return this.filteredResults.filter(r =>
+      r.timestamp && r.timestamp.substring(0, 10) >= cutoffStr
+    );
+  }
+
   // ─── Charts ───────────────────────────────────────────────────────────────
   buildCharts(): void {
     this.buildStreamAttemptsChart();
@@ -259,7 +284,8 @@ export class OttReportComponent implements OnInit, OnDestroy {
   }
 
   private buildStreamAttemptsChart(): void {
-    const grouped = this.groupByDate(this.filteredResults);
+    const chartData = this.getChartFilteredResults();
+    const grouped = this.groupByDate(chartData);
     const dates = [...grouped.keys()].map(d => this.dateLabel(d));
     const passedData = [...grouped.values()].map(arr =>
       arr.filter(r => r.status?.toUpperCase() === 'PASSED').length
@@ -271,15 +297,24 @@ export class OttReportComponent implements OnInit, OnDestroy {
       { name: 'Passed', data: passedData },
       { name: 'Failed', data: failedData }
     ];
-    this.streamXaxis = { ...this.streamXaxis, categories: dates };
+    this.streamXaxis = {
+      ...this.streamXaxis,
+      categories: dates,
+      labels: {
+        ...this.streamXaxis.labels,
+        rotate: dates.length > 15 ? -45 : 0,
+        rotateAlways: dates.length > 15
+      }
+    };
   }
 
   private buildStatusDonutChart(): void {
+    const chartData = this.getChartFilteredResults();
     const colorMap: Record<string, string> = {
       PASSED: '#12B76A', FAILED: '#F04438', BUFFERING: '#F79009', ERROR_MESSAGE: '#A855F7'
     };
     const statusMap = new Map<string, number>();
-    this.filteredResults.forEach(r => {
+    chartData.forEach(r => {
       const s = (r.status ?? 'UNKNOWN').toUpperCase();
       statusMap.set(s, (statusMap.get(s) ?? 0) + 1);
     });
@@ -290,8 +325,9 @@ export class OttReportComponent implements OnInit, OnDestroy {
   }
 
   private buildErrorBarChart(): void {
+    const chartData = this.getChartFilteredResults();
     const errorMap = new Map<string, number>();
-    this.filteredResults.forEach(r => {
+    chartData.forEach(r => {
       if (r.errorType) {
         errorMap.set(r.errorType, (errorMap.get(r.errorType) ?? 0) + 1);
       }
@@ -302,14 +338,23 @@ export class OttReportComponent implements OnInit, OnDestroy {
   }
 
   private buildAvgDurationChart(): void {
-    const grouped = this.groupByDate(this.filteredResults);
+    const chartData = this.getChartFilteredResults();
+    const grouped = this.groupByDate(chartData);
     const dates = [...grouped.keys()].map(d => this.dateLabel(d));
     const avgData = [...grouped.values()].map(arr => {
       const total = arr.reduce((s, r) => s + (r.playbackTimeSeconds ?? 0), 0);
       return arr.length ? Math.round(total / arr.length) : 0;
     });
     this.avgDurSeries = [{ name: 'Avg Duration (s)', data: avgData }];
-    this.avgDurXaxis = { ...this.avgDurXaxis, categories: dates };
+    this.avgDurXaxis = {
+      ...this.avgDurXaxis,
+      categories: dates,
+      labels: {
+        ...this.avgDurXaxis.labels,
+        rotate: dates.length > 15 ? -45 : 0,
+        rotateAlways: dates.length > 15
+      }
+    };
   }
 
   // ─── Filtering ────────────────────────────────────────────────────────────

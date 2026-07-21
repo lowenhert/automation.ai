@@ -12,11 +12,70 @@ export interface STBBox {
   stbNo: number;
 }
 
+export interface STBAutomationReport {
+  id?: number;
+  stbNo: number;
+  boxName: string;
+  reportDate: string;
+  fileName: string;
+  contentType?: string;
+  totalTests: number;
+  passed: number;
+  failed: number;
+  uploadedAt?: string;
+}
+
+export interface StbTestCase {
+  id?: number;
+  moduleName: string;
+  testName: string;
+  description?: string;
+  category?: string;
+  totalSteps?: number;
+  enabled?: boolean;
+  createdAt?: string;
+}
+
+export interface StbExecution {
+  id?: number;
+  executionName: string;
+  stbNo: number;
+  boxName?: string;
+  status: string;
+  totalTests: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  triggeredBy?: string;
+  startTime?: string;
+  endTime?: string;
+  durationSeconds?: number;
+  notes?: string;
+  createdAt?: string;
+  results?: StbExecutionResult[];
+}
+
+export interface StbExecutionResult {
+  id?: number;
+  executionId: number;
+  testCaseId?: number;
+  moduleName?: string;
+  stepNumber?: number;
+  stepName?: string;
+  status: string;
+  errorMessage?: string;
+  durationMs?: number;
+  screenshotPath?: string;
+  timestamp?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class StbService {
   private apiUrl = `${environment.apiUrl}/stbs`;
+  private reportsUrl = `${environment.apiUrl}/stb-reports`;
+  private execUrl = `${environment.apiUrl}/stb-executions`;
 
   constructor(private http: HttpClient) { }
 
@@ -69,6 +128,122 @@ export class StbService {
         retry(2),
         catchError(this.handleError)
       );
+  }
+
+  /**
+   * Get automation reports for a specific STB box
+   */
+  getReportsByBox(stbNo: number): Observable<STBAutomationReport[]> {
+    return this.http.get<STBAutomationReport[]>(`${this.reportsUrl}/box/${stbNo}`)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  /**
+   * Get all automation reports
+   */
+  getAllReports(): Observable<STBAutomationReport[]> {
+    return this.http.get<STBAutomationReport[]>(this.reportsUrl)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  /**
+   * Upload an Excel report for a box
+   */
+  uploadReport(stbNo: number, boxName: string, file: File): Observable<STBAutomationReport> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('stbNo', stbNo.toString());
+    formData.append('boxName', boxName);
+    return this.http.post<STBAutomationReport>(`${this.reportsUrl}/upload`, formData)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Download a report file
+   */
+  downloadReport(id: number): Observable<Blob> {
+    return this.http.get(`${this.reportsUrl}/${id}/download`, { responseType: 'blob' })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Delete a report
+   */
+  deleteReport(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.reportsUrl}/${id}`)
+      .pipe(catchError(this.handleError));
+  }
+
+  // ─── Test Cases ─────────────────────────────────────────────────────────
+
+  getTestCases(): Observable<StbTestCase[]> {
+    return this.http.get<StbTestCase[]>(`${this.execUrl}/test-cases`)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  getEnabledTestCases(): Observable<StbTestCase[]> {
+    return this.http.get<StbTestCase[]>(`${this.execUrl}/test-cases/enabled`)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  createTestCase(tc: { moduleName: string; testName: string; description?: string; category?: string; totalSteps?: number }): Observable<StbTestCase> {
+    return this.http.post<StbTestCase>(`${this.execUrl}/test-cases`, tc)
+      .pipe(catchError(this.handleError));
+  }
+
+  toggleTestCase(id: number): Observable<StbTestCase> {
+    return this.http.patch<StbTestCase>(`${this.execUrl}/test-cases/${id}/toggle`, {})
+      .pipe(catchError(this.handleError));
+  }
+
+  deleteTestCase(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.execUrl}/test-cases/${id}`)
+      .pipe(catchError(this.handleError));
+  }
+
+  // ─── Executions ─────────────────────────────────────────────────────────
+
+  getExecutions(): Observable<StbExecution[]> {
+    return this.http.get<StbExecution[]>(this.execUrl)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  getExecutionsByStb(stbNo: number): Observable<StbExecution[]> {
+    return this.http.get<StbExecution[]>(`${this.execUrl}/box/${stbNo}`)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  getExecutionDetail(id: number): Observable<StbExecution> {
+    return this.http.get<StbExecution>(`${this.execUrl}/${id}`)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  createExecution(req: { executionName: string; stbNo: number; boxName?: string; testCaseIds: number[]; triggeredBy?: string; notes?: string }): Observable<StbExecution> {
+    return this.http.post<StbExecution>(this.execUrl, req)
+      .pipe(catchError(this.handleError));
+  }
+
+  updateExecutionStatus(id: number, status: string): Observable<StbExecution> {
+    return this.http.patch<StbExecution>(`${this.execUrl}/${id}/status?status=${encodeURIComponent(status)}`, {})
+      .pipe(catchError(this.handleError));
+  }
+
+  deleteExecution(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.execUrl}/${id}`)
+      .pipe(catchError(this.handleError));
+  }
+
+  getExecutionResults(executionId: number): Observable<StbExecutionResult[]> {
+    return this.http.get<StbExecutionResult[]>(`${this.execUrl}/${executionId}/results`)
+      .pipe(retry(2), catchError(this.handleError));
+  }
+
+  /**
+   * Trigger an execution — starts the Python test runner on the backend
+   */
+  triggerExecution(executionId: number, deviceId: string, modules: string[]): Observable<any> {
+    return this.http.post(`${this.execUrl}/${executionId}/trigger`, { deviceId, modules })
+      .pipe(catchError(this.handleError));
   }
 
   /**

@@ -22,6 +22,9 @@ import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalenderComponent } from './pages/calender/calender.component';
 import { UserManagementComponent } from './pages/user-management/user-management.component';
 import { OttReportComponent } from './pages/dashboard/ott-report/ott-report.component';
+import { StbLiveViewComponent } from './pages/dashboard/stb-live-view/stb-live-view.component';
+import { StbSlotDetailComponent } from './pages/dashboard/stb-slot-detail/stb-slot-detail.component';
+import { StbExecutionsComponent } from './pages/dashboard/stb-executions/stb-executions.component';
 import { authGuard, guestGuard } from './shared/guards/auth.guard';
 import { AdminGuard } from './shared/guards/admin.guard';
 
@@ -66,6 +69,21 @@ export const routes: Routes = [
         path:'ott-report',
         component:OttReportComponent,
         title:'OTT Report | Tata Play Dashboard'
+      },
+      {
+        path:'stb-live-view',
+        component:StbLiveViewComponent,
+        title:'STB Box Live View | Tata Play Dashboard'
+      },
+      {
+        path:'stb-live-view/:slot',
+        component:StbSlotDetailComponent,
+        title:'STB Slot Remote | Tata Play Dashboard'
+      },
+      {
+        path:'stb-executions',
+        component:StbExecutionsComponent,
+        title:'STB Executions | Tata Play Dashboard'
       },
       {
         path:'form-elements',

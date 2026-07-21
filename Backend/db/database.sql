@@ -4,7 +4,7 @@ CREATE TABLE stb_inventory (
                                uuid CHAR(36) NOT NULL,
                                vendor VARCHAR(50) NOT NULL,
                                model VARCHAR(50) NOT NULL,
-                               resolution ENUM('HD','SD') NOT NULL,
+                               resolution ENUM('HD','SD','ANDROID') NOT NULL,
                                stb_no INT NOT NULL,
                                UNIQUE KEY uk_uuid (uuid)
 );
@@ -42,9 +42,9 @@ INSERT INTO stb_inventory (uuid, vendor, model, resolution, stb_no) VALUES
                                                                         (UUID(),'IRDETO','Navya-2','HD',31),
                                                                         (UUID(),'IRDETO','Navya-2','HD',32),
                                                                         (UUID(),'IRDETO','Navya-3','HD',33),
-                                                                        (UUID(),'IRDETO','Prithivi-1','HD',38),
-                                                                        (UUID(),'IRDETO','Prithivi-2','HD',39),
-                                                                        (UUID(),'IRDETO','Prithivi-4','HD',35);
+                                                                        (UUID(),'IRDETO','Prithivi-1','ANDROID',38),
+                                                                        (UUID(),'IRDETO','Prithivi-2','ANDROID',39),
+                                                                        (UUID(),'IRDETO','Prithivi-4','ANDROID',35);
 
 CREATE INDEX idx_vendor_model
     ON stb_inventory(vendor, model);
@@ -147,4 +147,84 @@ INSERT INTO users (
     NULL,
     '2025-10-20 18:37:26',
     '2026-01-21 11:07:36'
+);
+
+-- STB Automation Reports Table
+CREATE TABLE IF NOT EXISTS stb_reports (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    stb_no INT NOT NULL,
+    box_name VARCHAR(100) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100),
+    report_date VARCHAR(20),
+    total_tests INT DEFAULT 0,
+    passed INT DEFAULT 0,
+    failed INT DEFAULT 0,
+    file_data LONGBLOB NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_stb_no (stb_no)
+);
+
+-- STB Test Cases Table
+CREATE TABLE IF NOT EXISTS stb_test_cases (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    module_name VARCHAR(100) NOT NULL,
+    test_name VARCHAR(200) NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+    total_steps INT,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed test cases from Long Run Automation modules
+INSERT INTO stb_test_cases (module_name, test_name, description, category, total_steps) VALUES
+    ('Parental Lock', 'Parental Lock Setup', 'Navigate to Parental Controls, enter PIN, lock channels', 'Settings', 12),
+    ('Favourite Channels', 'Favourite Channels Setup', 'Navigate to User Settings, select and save favourite channels', 'Settings', 10),
+    ('Remote Pairing', 'Remote Pairing Test', 'Test Bluetooth remote pairing with STB box', 'Hardware', 8),
+    ('Audio Change', 'Audio Change Test', 'Change audio language and verify playback audio', 'Media', 8),
+    ('Display Resolution', 'Display Resolution Setup', 'Change display resolution settings and verify', 'Settings', 6),
+    ('Banner Configuration', 'Banner Configuration Test', 'Configure channel banner timeout and display settings', 'Settings', 7),
+    ('Sound Configuration', 'Sound Configuration Test', 'Configure sound output mode and volume settings', 'Settings', 6),
+    ('Picture Resolution', 'Picture Resolution Test', 'Change picture resolution and verify output', 'Settings', 6),
+    ('Set Reminder', 'Set Reminder Test', 'Set program reminders and verify notification', 'Features', 8),
+    ('LNB Settings', 'LNB Settings Test', 'Configure LNB frequency and satellite settings', 'Hardware', 10);
+
+-- STB Executions Table
+CREATE TABLE IF NOT EXISTS stb_executions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    execution_name VARCHAR(200) NOT NULL,
+    stb_no INT NOT NULL,
+    box_name VARCHAR(100),
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    total_tests INT DEFAULT 0,
+    passed INT DEFAULT 0,
+    failed INT DEFAULT 0,
+    skipped INT DEFAULT 0,
+    test_case_ids TEXT,
+    triggered_by VARCHAR(100),
+    start_time TIMESTAMP NULL,
+    end_time TIMESTAMP NULL,
+    duration_seconds BIGINT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_exec_stb_no (stb_no),
+    INDEX idx_exec_status (status)
+);
+
+-- STB Execution Results Table
+CREATE TABLE IF NOT EXISTS stb_execution_results (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    execution_id BIGINT NOT NULL,
+    test_case_id BIGINT,
+    module_name VARCHAR(100),
+    step_number INT,
+    step_name VARCHAR(200),
+    status VARCHAR(20) NOT NULL,
+    error_message TEXT,
+    duration_ms BIGINT,
+    screenshot_path VARCHAR(500),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_execution_id (execution_id),
+    FOREIGN KEY (execution_id) REFERENCES stb_executions(id) ON DELETE CASCADE
 );

@@ -13,6 +13,7 @@ export interface CreateUserRequest {
   lastName: string;
   phoneNumber: string;
   provider: string;
+  active?: boolean;
 }
 
 export interface CreateUserRequestBody {

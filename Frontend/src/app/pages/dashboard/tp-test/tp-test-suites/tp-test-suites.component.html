@@ -1,0 +1,289 @@
+<div class="space-y-5">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <button (click)="goBack()"
+        class="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-[#465FFF] transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <div>
+        <h1 class="text-lg font-bold text-gray-800 dark:text-white">{{ project?.name || 'Project' }}</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ project?.description }}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button *ngIf="isAdminUser" (click)="showCreateSuiteModal = true"
+        class="h-[34px] px-4 text-xs font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        New Suite
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Loading ─────────────────────────────────────────────────────── -->
+  <div *ngIf="isLoading" class="flex justify-center py-16">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+  </div>
+
+  <!-- ── Content: Suite Tabs + Tree ──────────────────────────────────── -->
+  <div *ngIf="!isLoading && !error" class="flex flex-col lg:flex-row gap-4">
+
+    <!-- Suite Tabs (left panel) -->
+    <div class="lg:w-56 flex-shrink-0">
+      <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Suites</p>
+        </div>
+        <div class="p-2 space-y-1 max-h-[400px] overflow-y-auto">
+          <div *ngFor="let suite of suites"
+            (click)="selectSuite(suite)"
+            class="px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors flex items-center justify-between group"
+            [ngClass]="activeSuite?.id === suite.id
+              ? 'bg-[#465FFF]/10 text-[#465FFF] font-semibold'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'">
+            <span class="truncate">{{ suite.name }}</span>
+            <button *ngIf="isAdminUser" (click)="deleteSuite(suite); $event.stopPropagation()" title="Delete"
+              class="p-1 rounded text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div *ngIf="suites.length === 0" class="px-3 py-4 text-center text-xs text-gray-400">
+            No suites yet
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Tree + Cases (right panel) -->
+    <div class="flex-1 min-w-0">
+      <div *ngIf="!activeSuite" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-10 text-center">
+        <p class="text-gray-400">Select a suite to view sections and cases.</p>
+      </div>
+
+      <div *ngIf="activeSuite" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+        <!-- Suite header -->
+        <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">{{ activeSuite.name }}</h2>
+          <button *ngIf="isAdminUser" (click)="openCreateSection(null)"
+            class="h-[30px] px-3 text-xs font-medium text-[#465FFF] border border-[#465FFF]/30 rounded-lg hover:bg-[#465FFF]/5 transition-colors flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Section
+          </button>
+        </div>
+
+        <!-- Loading sections -->
+        <div *ngIf="sectionsLoading" class="p-8 text-center">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+        </div>
+
+        <!-- Sections Tree -->
+        <div *ngIf="!sectionsLoading" class="divide-y divide-gray-50 dark:divide-gray-800">
+          <!-- Empty state -->
+          <div *ngIf="getRootSections().length === 0 && cases.length === 0" class="p-8 text-center text-gray-400 text-sm">
+            No sections or cases. Add a section to get started.
+          </div>
+
+          <!-- Render root sections -->
+          <ng-container *ngFor="let section of getRootSections()">
+            <div class="px-5 py-2.5">
+              <!-- Section header -->
+              <div class="flex items-center gap-2 cursor-pointer group" (click)="toggleSection(section.id!)">
+                <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-90]="expandedSections.has(section.id!)"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                </svg>
+                <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ section.name }}</span>
+                <span class="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded-full">{{ getCasesForSection(section.id!).length }}</span>
+                <div class="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button *ngIf="isAdminUser" (click)="openCreateCase(section.id!); $event.stopPropagation()" title="Add Case"
+                    class="p-1 rounded text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                  </button>
+                  <button *ngIf="isAdminUser" (click)="openCreateSection(section.id!); $event.stopPropagation()" title="Add Sub-Section"
+                    class="p-1 rounded text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Cases under this section -->
+              <div *ngIf="expandedSections.has(section.id!)" class="mt-2 ml-8 space-y-1.5">
+                <!-- Child sections -->
+                <div *ngFor="let child of getChildSections(section.id!)" class="pl-2 border-l-2 border-gray-200 dark:border-gray-700 mb-2">
+                  <div class="flex items-center gap-2 py-1">
+                    <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                    </svg>
+                    <span class="text-xs font-medium text-gray-600 dark:text-gray-300">{{ child.name }}</span>
+                    <button (click)="openCreateCase(child.id!)" class="ml-auto p-0.5 rounded text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div *ngFor="let tc of getCasesForSection(child.id!)" class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 group/case">
+                    <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <span class="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">{{ tc.title }}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded font-medium" [ngClass]="getPriorityClass(tc.priority || '')">{{ tc.priority }}</span>
+                    <button *ngIf="isAdminUser" (click)="deleteCase(tc)" class="p-0.5 rounded text-red-400 opacity-0 group-hover/case:opacity-100 transition-opacity">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Cases directly in section -->
+                <div *ngFor="let tc of getCasesForSection(section.id!)" class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 group/case">
+                  <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  </svg>
+                  <span class="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">{{ tc.title }}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded font-medium" [ngClass]="getPriorityClass(tc.priority || '')">{{ tc.priority }}</span>
+                  <button *ngIf="isAdminUser" (click)="deleteCase(tc)" class="p-0.5 rounded text-red-400 opacity-0 group-hover/case:opacity-100 transition-opacity">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ CREATE SUITE MODAL ═══════ -->
+  <div *ngIf="showCreateSuiteModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showCreateSuiteModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Create Test Suite</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">SUITE NAME *</label>
+          <input type="text" [(ngModel)]="newSuite.name" placeholder="e.g. Regression Suite"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">DESCRIPTION</label>
+          <textarea [(ngModel)]="newSuite.description" rows="2" placeholder="Optional description..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showCreateSuiteModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="createSuite()" [disabled]="!newSuite.name?.trim()"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ CREATE SECTION MODAL ═══════ -->
+  <div *ngIf="showCreateSectionModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showCreateSectionModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">{{ parentSectionId ? 'Create Sub-Section' : 'Create Section' }}</h2>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">SECTION NAME *</label>
+        <input type="text" [(ngModel)]="newSection.name" placeholder="e.g. Login Tests"
+          class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showCreateSectionModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="createSection()" [disabled]="!newSection.name?.trim()"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ CREATE CASE MODAL ═══════ -->
+  <div *ngIf="showCreateCaseModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showCreateCaseModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Create Test Case</h2>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">TITLE *</label>
+          <input type="text" [(ngModel)]="newCase.title" placeholder="e.g. Verify login with valid credentials"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">PRIORITY</label>
+            <select [(ngModel)]="newCase.priority"
+              class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">TYPE</label>
+            <select [(ngModel)]="newCase.type"
+              class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+              <option value="FUNCTIONAL">Functional</option>
+              <option value="REGRESSION">Regression</option>
+              <option value="SMOKE">Smoke</option>
+              <option value="PERFORMANCE">Performance</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">PRECONDITIONS</label>
+          <textarea [(ngModel)]="newCase.preconditions" rows="2" placeholder="Setup steps required..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">STEPS</label>
+          <textarea [(ngModel)]="newCase.steps" rows="3" placeholder="1. Step one&#10;2. Step two&#10;3. Step three"
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">EXPECTED RESULT</label>
+          <textarea [(ngModel)]="newCase.expectedResult" rows="2" placeholder="Expected outcome..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ACTUAL RESULT</label>
+          <textarea [(ngModel)]="newCase.actualResult" rows="2" placeholder="Actual outcome observed..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">REMARK</label>
+          <textarea [(ngModel)]="newCase.remark" rows="2" placeholder="Any additional notes or observations..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showCreateCaseModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="createCase()" [disabled]="!newCase.title?.trim()"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Create Case</button>
+      </div>
+    </div>
+  </div>
+
+</div>

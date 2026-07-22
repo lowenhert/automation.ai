@@ -1,5 +1,8 @@
 package com.lowenhert.patchmanagement.core.auth;
 
+import com.lowenhert.patchmanagement.core.user.User;
+import com.lowenhert.patchmanagement.core.user.UserRepository;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,18 +20,28 @@ public class AuthService {
     private final AuthenticationManager authManager;
     private final JwtTokenUtil jwtTokenUtil;
     private final CustomUserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
-    public String login(String username, String password) {
+    @Data
+    public static class LoginResult {
+        private final String token;
+        private final User user;
+    }
+
+    public LoginResult login(String username, String password) {
         log.debug("Authenticating user: {}", username);
 
         authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
         );
 
-        UserDetails user = userDetailsService.loadUserByUsername(username);
-        String token = jwtTokenUtil.generateToken(user.getUsername());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        String token = jwtTokenUtil.generateToken(userDetails.getUsername());
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found after authentication: " + username));
 
         log.info("Login successful for user: {}", username);
-        return token;
+        return new LoginResult(token, user);
     }
 }

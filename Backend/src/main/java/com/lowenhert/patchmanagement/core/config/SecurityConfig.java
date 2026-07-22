@@ -57,6 +57,7 @@ public class SecurityConfig {
                     "/api/adb/**",
                     "/api/stb-reports/**",
                     "/api/stb-executions/**",
+                    "/api/tp-test/**",
                     "/ws-scripts/**"
                 ).permitAll()
                 .requestMatchers("/api/users").permitAll()

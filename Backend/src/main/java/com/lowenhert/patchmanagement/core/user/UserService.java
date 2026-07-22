@@ -159,6 +159,14 @@ public class UserService {
             existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
+        if (request.getActive() != null) {
+            existingUser.setActive(request.getActive());
+        }
+
+        if (request.getRole() != null && "ADMIN".equalsIgnoreCase(currentUser.getRole())) {
+            existingUser.setRole(request.getRole());
+        }
+
         User saved = userRepository.save(existingUser);
         log.info("User updated: id={} by {}", id, currentUser.getUsername());
         return mapToResponse(saved);

@@ -21,6 +21,7 @@ import { Subscription, combineLatest } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { OttService, OttAutomationTestResult } from '../../../shared/services/ott.service';
 import { SidebarService } from '../../../shared/services/sidebar.service';
+import { AuthService } from '../../../shared/services/auth.service';
 import { DatePickerComponent } from '../../../shared/components/form/date-picker/date-picker.component';
 import * as XLSX from 'xlsx';
 
@@ -173,12 +174,20 @@ export class OttReportComponent implements OnInit, OnDestroy {
   avgDurDataLabels: ApexDataLabels = { enabled: false };
   avgDurMarkers = { size: 4, colors: ['#fff'], strokeColors: '#465FFF', strokeWidth: 2, hover: { size: 6 } };
 
+  isAdmin = false;
+
   constructor(
     private ottService: OttService,
-    private sidebarService: SidebarService
+    private sidebarService: SidebarService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
+    const profile = this.authService.getUserProfile();
+    this.isAdmin = profile?.role === 'ADMIN';
+    if (!profile) {
+      this.authService.fetchUserProfile().subscribe(p => this.isAdmin = p.role === 'ADMIN');
+    }
     this.loadData();
     // Trigger ApexCharts resize after sidebar animation ends
     this.subs.add(
@@ -457,6 +466,7 @@ export class OttReportComponent implements OnInit, OnDestroy {
   // ─── Date Picker Handler ──────────────────────────────────────────────────
   onDateChange(event: { selectedDates: Date[]; dateStr: string }): void {
     this.filterDate = event.dateStr || '';
+    this.applyFilters();
   }
 
   // ─── Excel Download ───────────────────────────────────────────────────────

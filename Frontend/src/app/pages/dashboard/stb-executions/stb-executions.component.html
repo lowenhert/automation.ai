@@ -6,19 +6,19 @@
   <div *ngIf="!showDetail"
     class="rounded-2xl border border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
     <div>
-      <h1 class="text-xl font-bold text-gray-800 dark:text-white tracking-wide">STB Test Automation</h1>
+      <h1 class="text-xl font-bold text-gray-800 dark:text-white tracking-wide">Scripts</h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-        Run, track, and manage Tata Play Long Run test modules
+        Create, manage, and execute pytest automation scripts for Tata Play STB
       </p>
     </div>
     <div class="flex items-center gap-3 text-sm">
       <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800">
-        <span class="text-gray-500 dark:text-gray-400">Executions:</span>
-        <span class="font-bold text-gray-800 dark:text-white">{{ executions.length }}</span>
+        <span class="text-gray-500 dark:text-gray-400">Scripts:</span>
+        <span class="font-bold text-gray-800 dark:text-white">{{ scripts.length }}</span>
       </div>
       <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800">
-        <span class="text-gray-500 dark:text-gray-400">Pass Rate:</span>
-        <span class="font-bold text-green-600 dark:text-green-400">{{ getPassRate() }}</span>
+        <span class="text-gray-500 dark:text-gray-400">Executions:</span>
+        <span class="font-bold text-gray-800 dark:text-white">{{ executions.length }}</span>
       </div>
       <div *ngIf="activeExecutions.length > 0"
         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20">
@@ -32,6 +32,11 @@
   <!-- TABS                                                         -->
   <!-- ═════════════════════════════════════════════════════════════ -->
   <div *ngIf="!showDetail" class="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+    <button (click)="activeTab = 'scripts'; loadScripts()"
+      class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors"
+      [ngClass]="activeTab === 'scripts' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
+      📝 Scripts
+    </button>
     <button (click)="activeTab = 'run'"
       class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors"
       [ngClass]="activeTab === 'run' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
@@ -40,12 +45,7 @@
     <button (click)="activeTab = 'history'"
       class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors"
       [ngClass]="activeTab === 'history' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
-      📋 Execution History
-    </button>
-    <button (click)="activeTab = 'test-cases'"
-      class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors"
-      [ngClass]="activeTab === 'test-cases' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
-      📦 Test Cases
+      📋 History
     </button>
   </div>
 
@@ -278,7 +278,7 @@
               <td class="px-3 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">{{ formatDuration(exec.durationSeconds) }}</td>
               <td class="px-3 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">{{ exec.createdAt }}</td>
               <td class="px-3 py-3 text-center" (click)="$event.stopPropagation()">
-                <button (click)="deleteExecution(exec)" title="Delete"
+                <button *ngIf="isAdmin" (click)="deleteExecution(exec)" title="Delete"
                   class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -293,103 +293,250 @@
   </div>
 
   <!-- ═════════════════════════════════════════════════════════════ -->
-  <!-- TAB: TEST CASES                                              -->
+  <!-- TAB: SCRIPTS                                                 -->
   <!-- ═════════════════════════════════════════════════════════════ -->
-  <div *ngIf="activeTab === 'test-cases' && !showDetail" class="space-y-4">
+  <div *ngIf="activeTab === 'scripts' && !showDetail" class="space-y-5">
 
-    <!-- Add Test Case Form -->
-    <div *ngIf="showAddTestCase" class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-      <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Add New Test Case</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+    <!-- Scripts Overview Header -->
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">MODULE NAME *</label>
-          <input type="text" [(ngModel)]="newTcModule" placeholder="e.g. Parental Lock"
-            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+          <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-[#465FFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+            </svg>
+            Pytest Scripts
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
+            Manage your automation test scripts. Each file is a pytest module that runs against STB devices via ADB. 
+            Scripts must follow the <span class="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">test_*.py</span> naming convention.
+          </p>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">TEST NAME *</label>
-          <input type="text" [(ngModel)]="newTcName" placeholder="e.g. Parental Lock Setup"
-            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">CATEGORY</label>
-          <input type="text" [(ngModel)]="newTcCategory" placeholder="e.g. Security"
-            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">DESCRIPTION</label>
-          <input type="text" [(ngModel)]="newTcDesc" placeholder="Brief description..."
-            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">TOTAL STEPS</label>
-          <input type="number" [(ngModel)]="newTcSteps" placeholder="e.g. 10"
-            class="w-full text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
-        </div>
-      </div>
-      <div class="flex justify-end gap-2">
-        <button (click)="showAddTestCase = false"
-          class="h-[36px] px-4 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700">Cancel</button>
-        <button (click)="addTestCase()"
-          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] rounded-lg hover:bg-[#3A4FE0]">Save Test Case</button>
-      </div>
-    </div>
-
-    <!-- Test Cases Table -->
-    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
-      <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ testCases.length }} Test Case{{ testCases.length !== 1 ? 's' : '' }}</h2>
-        <button (click)="showAddTestCase = true"
-          class="h-[34px] px-4 text-xs font-medium text-white bg-[#465FFF] rounded-lg hover:bg-[#3A4FE0] transition-colors">
-          + Add Test Case
+        <button (click)="openCreateScript()"
+          class="h-[38px] px-5 text-sm font-semibold text-white bg-[#465FFF] rounded-xl hover:bg-[#3A4FE0] transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          New Script
         </button>
       </div>
 
-      <div *ngIf="testCasesLoading" class="flex justify-center py-8">
+      <!-- Quick Info Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Total Scripts</p>
+            <p class="text-sm font-bold text-gray-800 dark:text-white">{{ scripts.length }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+          <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+            <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Framework</p>
+            <p class="text-sm font-bold text-gray-800 dark:text-white">Pytest</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+          <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Location</p>
+            <p class="text-sm font-bold text-gray-800 dark:text-white">test/</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Run via</p>
+            <p class="text-sm font-bold text-gray-800 dark:text-white">Run Tests tab</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Script Editor Panel -->
+    <div *ngIf="showScriptEditor" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+      <!-- Editor Header -->
+      <div class="flex items-center justify-between px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full" [ngClass]="scriptEditorMode === 'create' ? 'bg-green-500' : 'bg-amber-500'"></div>
+          <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200">
+            {{ scriptEditorMode === 'create' ? 'Create New Script' : 'Editing: ' + editingScript?.name }}
+          </h3>
+        </div>
+        <button (click)="closeScriptEditor()" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-5 space-y-4">
+        <!-- File Name Input (create mode) -->
+        <div *ngIf="scriptEditorMode === 'create'">
+          <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">File Name</label>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400 font-mono">test/</span>
+            <input type="text" [(ngModel)]="newScriptName" placeholder="test_my_module.py"
+              class="flex-1 text-sm h-[38px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none font-mono" />
+          </div>
+          <p class="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Convention: <span class="font-mono">test_&lt;module_name&gt;.py</span> — pytest auto-discovers files matching this pattern
+          </p>
+        </div>
+
+        <!-- Code Editor -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Script Content</label>
+          <div class="rounded-xl overflow-hidden border border-gray-700">
+            <div class="flex items-center gap-2 px-4 py-2 bg-gray-800 border-b border-gray-700">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+              <span class="text-[10px] text-gray-500 ml-2 font-mono">{{ scriptEditorMode === 'create' ? newScriptName || 'untitled.py' : editingScript?.name }}</span>
+            </div>
+            <textarea [(ngModel)]="newScriptContent" rows="22"
+              class="w-full text-[13px] px-5 py-4 bg-[#1e1e2e] text-[#cdd6f4] font-mono leading-relaxed focus:outline-none resize-y"
+              spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between pt-2">
+          <p class="text-[11px] text-gray-400">
+            <span class="font-medium">Tip:</span> Use <span class="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">device</span> fixture to interact with STB via ADB commands
+          </p>
+          <div class="flex gap-2">
+            <button (click)="closeScriptEditor()"
+              class="h-[36px] px-4 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+            <button (click)="saveScript()"
+              class="h-[36px] px-6 text-sm font-semibold text-white bg-[#465FFF] rounded-lg hover:bg-[#3A4FE0] transition-colors shadow-sm">
+              {{ scriptEditorMode === 'create' ? 'Create Script' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts Grid -->
+    <div *ngIf="!showScriptEditor" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+      
+      <div *ngIf="scriptsLoading" class="flex justify-center py-12">
         <div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-[#465FFF]"></div>
       </div>
 
-      <div *ngIf="!testCasesLoading && testCases.length === 0" class="py-10 text-center text-sm text-gray-400">
-        No test cases yet. Click "Add Test Case" above.
+      <!-- Empty State -->
+      <div *ngIf="!scriptsLoading && scripts.length === 0" class="py-16 text-center px-5">
+        <div class="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 mx-auto flex items-center justify-center mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+          </svg>
+        </div>
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">No test scripts yet</h3>
+        <p class="text-xs text-gray-400 max-w-sm mx-auto">Create your first pytest script to start automating STB test scenarios. Scripts are stored in the <span class="font-mono">test/</span> directory.</p>
+        <button (click)="openCreateScript()"
+          class="mt-4 h-[34px] px-4 text-xs font-medium text-[#465FFF] border border-[#465FFF]/30 rounded-lg hover:bg-[#465FFF]/5 transition-colors">
+          + Create First Script
+        </button>
       </div>
 
-      <div *ngIf="!testCasesLoading && testCases.length > 0" class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.02]">
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Module</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Test Name</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Category</th>
-              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Steps</th>
-              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Enabled</th>
-              <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-16"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let tc of testCases" class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-              <td class="px-5 py-3 font-medium text-gray-800 dark:text-white">{{ tc.moduleName }}</td>
-              <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ tc.testName }}</td>
-              <td class="px-3 py-3 text-gray-500 dark:text-gray-400">{{ tc.category || '—' }}</td>
-              <td class="px-3 py-3 text-center text-gray-600 dark:text-gray-300">{{ tc.totalSteps || '—' }}</td>
-              <td class="px-3 py-3 text-center">
-                <button (click)="toggleTc(tc)"
-                  class="w-10 h-5 rounded-full transition-colors relative"
-                  [ngClass]="tc.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
-                  <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
-                    [ngClass]="tc.enabled ? 'left-5' : 'left-0.5'"></span>
-                </button>
-              </td>
-              <td class="px-3 py-3 text-center">
-                <button (click)="deleteTc(tc)" title="Delete"
-                  class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Scripts Table -->
+      <div *ngIf="!scriptsLoading && scripts.length > 0">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5">
+          <div *ngFor="let script of scripts"
+            class="group relative rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:border-[#465FFF]/40 hover:shadow-md transition-all cursor-pointer"
+            (click)="openEditScript(script.name)">
+            
+            <!-- File Icon & Info -->
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                </svg>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">{{ script.name }}</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">
+                  {{ script.size ? (script.size / 1024).toFixed(1) + ' KB' : 'Unknown size' }}
+                  <span *ngIf="script.lastModified" class="ml-1">· {{ script.lastModified | date:'MMM d, y' }}</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Module name derived from filename -->
+            <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+              <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                Module: <span class="font-medium text-gray-700 dark:text-gray-200">{{ script.name.replace('test_', '').replace('.py', '').replace(/_/g, ' ') | titlecase }}</span>
+              </p>
+            </div>
+
+            <!-- Hover Actions -->
+            <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button (click)="openEditScript(script.name); $event.stopPropagation()" title="Edit"
+                class="p-1.5 rounded-lg text-gray-500 hover:text-[#465FFF] hover:bg-[#465FFF]/10 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </button>
+              <button *ngIf="isAdmin" (click)="deleteScript(script.name); $event.stopPropagation()" title="Delete"
+                class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it Works Info -->
+    <div *ngIf="!showScriptEditor" class="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 p-5">
+      <h3 class="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        How Scripts Work
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-500 dark:text-gray-400">
+        <div class="flex gap-2.5">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-[#465FFF]/10 text-[#465FFF] flex items-center justify-center text-[10px] font-bold">1</span>
+          <div>
+            <p class="font-medium text-gray-700 dark:text-gray-200 mb-0.5">Write</p>
+            <p>Create a pytest script here. Use the <span class="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">device</span> fixture for ADB interaction with the STB box.</p>
+          </div>
+        </div>
+        <div class="flex gap-2.5">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-[#465FFF]/10 text-[#465FFF] flex items-center justify-center text-[10px] font-bold">2</span>
+          <div>
+            <p class="font-medium text-gray-700 dark:text-gray-200 mb-0.5">Select &amp; Run</p>
+            <p>Go to the "Run Tests" tab, select your module, pick the target STB box and ADB device, then hit Execute.</p>
+          </div>
+        </div>
+        <div class="flex gap-2.5">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-[#465FFF]/10 text-[#465FFF] flex items-center justify-center text-[10px] font-bold">3</span>
+          <div>
+            <p class="font-medium text-gray-700 dark:text-gray-200 mb-0.5">Monitor</p>
+            <p>View real-time logs during execution. Results are automatically captured and shown in the History tab.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -416,10 +563,19 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ getBoxLabel(selectedExecution.stbNo) }} · {{ selectedExecution.createdAt }}</p>
           </div>
         </div>
-        <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" [ngClass]="statusColor(selectedExecution.status)">
-          <span class="w-2 h-2 rounded-full" [ngClass]="statusDotColor(selectedExecution.status)"></span>
-          {{ selectedExecution.status }}
-        </span>
+        <div class="flex items-center gap-3">
+          <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" [ngClass]="statusColor(selectedExecution.status)">
+            <span class="w-2 h-2 rounded-full" [ngClass]="statusDotColor(selectedExecution.status)"></span>
+            {{ selectedExecution.status }}
+          </span>
+          <button *ngIf="!showLogs" (click)="openLogs(selectedExecution.id!)"
+            class="h-[30px] px-3 text-[11px] font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Logs
+          </button>
+        </div>
       </div>
     </div>
 
@@ -455,6 +611,48 @@
       </div>
       <div class="w-full h-2 rounded-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden">
         <div class="h-full rounded-full bg-blue-500 transition-all duration-500" [style.width.%]="getProgressPercent(selectedExecution)"></div>
+      </div>
+      <button *ngIf="!showLogs" (click)="openLogs(selectedExecution.id!)"
+        class="mt-3 h-[34px] px-4 text-xs font-medium text-white bg-gray-800 dark:bg-gray-700 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center gap-2">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        View Live Logs
+      </button>
+    </div>
+
+    <!-- ─── Real-time Log Viewer ───────────────────────────────────── -->
+    <div *ngIf="showLogs" class="rounded-2xl border border-gray-800 bg-gray-900 dark:border-gray-700 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-gray-800 border-b border-gray-700">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full animate-pulse" [ngClass]="logEventSource ? 'bg-green-500' : 'bg-gray-500'"></span>
+          <span class="text-xs font-medium text-gray-200">Execution Logs</span>
+          <span class="text-[10px] text-gray-500">({{ logLines.length }} lines)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="logsAutoScroll" class="w-3 h-3 rounded border-gray-600 text-blue-500 focus:ring-blue-500">
+            Auto-scroll
+          </label>
+          <button (click)="closeLogs()"
+            class="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Close logs">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div #logContainer class="h-[400px] overflow-y-auto p-4 font-mono text-xs text-gray-300 leading-relaxed">
+        <div *ngIf="logLines.length === 0" class="text-gray-500 italic">Waiting for logs...</div>
+        <div *ngFor="let line of logLines; let i = index" class="py-0.5"
+          [ngClass]="{
+            'text-red-400': line.includes('[ERROR]') || line.includes('FAILED') || line.includes('Error'),
+            'text-green-400': line.includes('PASSED') || line.includes('[SYSTEM] Process finished'),
+            'text-yellow-400': line.includes('[WARNING]') || line.includes('SKIPPED'),
+            'text-blue-400': line.includes('[SYSTEM]')
+          }">
+          <span class="text-gray-600 mr-2 select-none">{{ i + 1 }}</span>{{ line }}
+        </div>
       </div>
     </div>
 

@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StbService, STBBox, StbTestCase, StbExecution, StbExecutionResult } from '../../../shared/services/stb.service';
+import { AuthService } from '../../../shared/services/auth.service';
 
 export interface TestModule {
   key: string;
@@ -30,10 +31,12 @@ export interface GroupedResult {
 })
 export class StbExecutionsComponent implements OnInit, OnDestroy {
   private stbService = inject(StbService);
+  private authService = inject(AuthService);
   private pollTimer: any;
+  isAdmin = false;
 
   // ─── Tabs ─────────────────────────────────────────────────────────────
-  activeTab: 'run' | 'history' | 'test-cases' = 'run';
+  activeTab: 'run' | 'history' | 'test-cases' | 'scripts' = 'scripts';
 
   // ─── Test Modules (from Python Long-Run-Automation project) ───────────
   testModules: TestModule[] = [
@@ -91,12 +94,34 @@ export class StbExecutionsComponent implements OnInit, OnDestroy {
   newTcCategory = '';
   newTcSteps: number | null = null;
 
+  // ─── Log Viewer ───────────────────────────────────────────────────────
+  @ViewChild('logContainer') logContainer!: ElementRef;
+  logLines: string[] = [];
+  logEventSource: EventSource | null = null;
+  showLogs = false;
+  logsAutoScroll = true;
+
+  // ─── Script Management ────────────────────────────────────────────────
+  scripts: any[] = [];
+  scriptsLoading = false;
+  showScriptEditor = false;
+  editingScript: { name: string; content: string } | null = null;
+  newScriptName = '';
+  newScriptContent = '';
+  scriptEditorMode: 'create' | 'edit' = 'create';
+
   // ─── Lifecycle ────────────────────────────────────────────────────────
 
   ngOnInit(): void {
+    const profile = this.authService.getUserProfile();
+    this.isAdmin = profile?.role === 'ADMIN';
+    if (!profile) {
+      this.authService.fetchUserProfile().subscribe(p => this.isAdmin = p.role === 'ADMIN');
+    }
     this.loadStbBoxes();
     this.loadExecutions();
     this.loadTestCases();
+    this.loadScripts();
     this.pollTimer = setInterval(() => {
       if (this.activeExecutions.length > 0) {
         this.refreshActiveExecutions();
@@ -106,6 +131,7 @@ export class StbExecutionsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.pollTimer) clearInterval(this.pollTimer);
+    this.closeLogs();
   }
 
   // ─── Data Loading ─────────────────────────────────────────────────────
@@ -304,6 +330,7 @@ export class StbExecutionsComponent implements OnInit, OnDestroy {
     this.selectedExecution = null;
     this.executionResults = [];
     this.groupedResults = [];
+    this.closeLogs();
   }
 
   deleteExecution(exec: StbExecution): void {
@@ -417,5 +444,100 @@ export class StbExecutionsComponent implements OnInit, OnDestroy {
   getProgressPercent(exec: StbExecution): number {
     if (!exec.totalTests || exec.totalTests === 0) return 0;
     return Math.round(((exec.passed + exec.failed + exec.skipped) / exec.totalTests) * 100);
+  }
+
+  // ─── Real-time Log Viewer ─────────────────────────────────────────────
+
+  openLogs(executionId: number): void {
+    this.closeLogs();
+    this.logLines = [];
+    this.showLogs = true;
+    this.logEventSource = this.stbService.streamExecutionLogs(executionId);
+    this.logEventSource.onmessage = (event) => {
+      this.logLines.push(event.data);
+      if (this.logsAutoScroll) {
+        setTimeout(() => this.scrollLogsToBottom(), 50);
+      }
+    };
+    this.logEventSource.onerror = () => {
+      // Stream ended (execution finished or error)
+      if (this.logEventSource) {
+        this.logEventSource.close();
+        this.logEventSource = null;
+      }
+    };
+  }
+
+  closeLogs(): void {
+    if (this.logEventSource) {
+      this.logEventSource.close();
+      this.logEventSource = null;
+    }
+    this.showLogs = false;
+    this.logLines = [];
+  }
+
+  scrollLogsToBottom(): void {
+    if (this.logContainer?.nativeElement) {
+      const el = this.logContainer.nativeElement;
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
+  // ─── Script File Management ───────────────────────────────────────────
+
+  loadScripts(): void {
+    this.scriptsLoading = true;
+    this.stbService.listScripts().subscribe({
+      next: (data) => { this.scripts = data; this.scriptsLoading = false; },
+      error: () => { this.scripts = []; this.scriptsLoading = false; }
+    });
+  }
+
+  openCreateScript(): void {
+    this.scriptEditorMode = 'create';
+    this.newScriptName = '';
+    this.newScriptContent = `import pytest\nimport time\n\n\nclass TestNewModule:\n    """Test module description"""\n\n    def test_step_1(self, device):\n        """Step 1 description"""\n        pass\n`;
+    this.editingScript = null;
+    this.showScriptEditor = true;
+  }
+
+  openEditScript(fileName: string): void {
+    this.stbService.getScript(fileName).subscribe({
+      next: (data) => {
+        this.scriptEditorMode = 'edit';
+        this.editingScript = data;
+        this.newScriptName = data.name;
+        this.newScriptContent = data.content;
+        this.showScriptEditor = true;
+      }
+    });
+  }
+
+  saveScript(): void {
+    if (this.scriptEditorMode === 'create') {
+      if (!this.newScriptName.trim()) return;
+      let name = this.newScriptName.trim();
+      if (!name.endsWith('.py')) name += '.py';
+      this.stbService.createScript(name, this.newScriptContent).subscribe({
+        next: () => { this.showScriptEditor = false; this.loadScripts(); }
+      });
+    } else {
+      this.stbService.updateScript(this.editingScript!.name, this.newScriptContent).subscribe({
+        next: () => { this.showScriptEditor = false; this.loadScripts(); }
+      });
+    }
+  }
+
+  deleteScript(fileName: string): void {
+    if (!confirm(`Delete script "${fileName}"?`)) return;
+    this.stbService.deleteScript(fileName).subscribe({
+      next: () => this.loadScripts()
+    });
+  }
+
+  closeScriptEditor(): void {
+    this.showScriptEditor = false;
+    this.editingScript = null;
   }
 }

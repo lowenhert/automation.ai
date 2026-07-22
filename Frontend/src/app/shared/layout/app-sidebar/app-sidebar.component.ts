@@ -43,19 +43,22 @@ export class AppSidebarComponent {
     },
     {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2 6C2 4.34315 3.34315 3 5 3H19C20.6569 3 22 4.34315 22 6V15C22 16.6569 20.6569 18 19 18H14V19H16C16.5523 19 17 19.4477 17 20C17 20.5523 16.5523 21 16 21H8C7.44772 21 7 20.5523 7 20C7 19.4477 7.44772 19 8 19H10V18H5C3.34315 18 2 16.6569 2 15V6ZM5 5C4.44772 5 4 5.44772 4 6V15C4 15.5523 4.44772 16 5 16H19C19.5523 16 20 15.5523 20 15V6C20 5.44772 19.5523 5 19 5H5ZM9.29289 8.29289C9.68342 7.90237 10.3166 7.90237 10.7071 8.29289L13 10.5858L13.2929 10.2929C13.6834 9.90237 14.3166 9.90237 14.7071 10.2929C15.0976 10.6834 15.0976 11.3166 14.7071 11.7071L13.7071 12.7071C13.3166 13.0976 12.6834 13.0976 12.2929 12.7071L10 10.4142L9.70711 10.7071C9.31658 11.0976 8.68342 11.0976 8.29289 10.7071C7.90237 10.3166 7.90237 9.68342 8.29289 9.29289L9.29289 8.29289Z" fill="currentColor"></path></svg>`,
-      name: "Binge",
+      name: "Binge + Automation",
       subItems: [
-        { name: "OTT Report", path: "/ott-report" }
+        { name: "OTT Report", path: "/ott-report" },
+        { name: "Stream Dec", path: "/stb-live-view" },
+        { name: "Scripts", path: "/stb-executions" }
       ],
     },
     {
-      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 3C2.89543 3 2 3.89543 2 5V15C2 16.1046 2.89543 17 4 17H10V19H8C7.44772 19 7 19.4477 7 20C7 20.5523 7.44772 21 8 21H16C16.5523 21 17 20.5523 17 20C17 19.4477 16.5523 19 16 19H14V17H20C21.1046 17 22 16.1046 22 15V5C22 3.89543 21.1046 3 20 3H4ZM20 5H4V15H20V5ZM7 7H9V9H7V7ZM11 7H13V9H11V7ZM15 7H17V9H15V7ZM7 11H9V13H7V11ZM11 11H13V13H11V11ZM15 11H17V13H15V11Z" fill="currentColor"/></svg>`,
-      name: "STB Automation",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9 2C7.89543 2 7 2.89543 7 4V5H5C3.89543 5 3 5.89543 3 7V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V7C21 5.89543 20.1046 5 19 5H17V4C17 2.89543 16.1046 2 15 2H9ZM15 4H9V5H15V4ZM5 7H19V20H5V7ZM8 10H10V12H8V10ZM11 10H16V12H11V10ZM8 14H10V16H8V14ZM11 14H16V16H11V14Z" fill="currentColor"/></svg>`,
+      name: "Test Suite",
       subItems: [
-        { name: "STB Box Live View", path: "/stb-live-view" },
-        { name: "STB Executions", path: "/stb-executions" }
+        { name: "Dashboard", path: "/tp-test" },
+        { name: "Projects", path: "/tp-test/projects" },
+        { name: "Test Runs", path: "/tp-test/runs" }
       ],
-    }
+    },
   ];
   // Others nav items
   othersItems: NavItem[] = [

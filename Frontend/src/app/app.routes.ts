@@ -25,6 +25,11 @@ import { OttReportComponent } from './pages/dashboard/ott-report/ott-report.comp
 import { StbLiveViewComponent } from './pages/dashboard/stb-live-view/stb-live-view.component';
 import { StbSlotDetailComponent } from './pages/dashboard/stb-slot-detail/stb-slot-detail.component';
 import { StbExecutionsComponent } from './pages/dashboard/stb-executions/stb-executions.component';
+import { TpTestDashboardComponent } from './pages/dashboard/tp-test/tp-test-dashboard/tp-test-dashboard.component';
+import { TpTestProjectsComponent } from './pages/dashboard/tp-test/tp-test-projects/tp-test-projects.component';
+import { TpTestSuitesComponent } from './pages/dashboard/tp-test/tp-test-suites/tp-test-suites.component';
+import { TpTestRunsComponent } from './pages/dashboard/tp-test/tp-test-runs/tp-test-runs.component';
+import { AboutComponent } from './pages/about/about.component';
 import { authGuard, guestGuard } from './shared/guards/auth.guard';
 import { AdminGuard } from './shared/guards/admin.guard';
 
@@ -84,6 +89,31 @@ export const routes: Routes = [
         path:'stb-executions',
         component:StbExecutionsComponent,
         title:'STB Executions | Tata Play Dashboard'
+      },
+      {
+        path:'tp-test',
+        component:TpTestDashboardComponent,
+        title:'Test Suite Dashboard | Tata Play Dashboard'
+      },
+      {
+        path:'tp-test/projects',
+        component:TpTestProjectsComponent,
+        title:'Test Suite Projects | Tata Play Dashboard'
+      },
+      {
+        path:'tp-test/projects/:projectId/suites',
+        component:TpTestSuitesComponent,
+        title:'Test Suite Suites | Tata Play Dashboard'
+      },
+      {
+        path:'tp-test/runs',
+        component:TpTestRunsComponent,
+        title:'Test Suite Runs | Tata Play Dashboard'
+      },
+      {
+        path:'about',
+        component:AboutComponent,
+        title:'About | Test Lab Framework'
       },
       {
         path:'form-elements',

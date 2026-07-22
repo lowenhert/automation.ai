@@ -13,11 +13,17 @@ export interface LoginRequest {
 export interface LoginResponse {
   token: string;
   username: string;
+  role: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface User {
   username: string;
   token: string;
+  role: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface UserProfile {
@@ -61,6 +67,26 @@ export class AuthService {
     // Check if token is expired on service initialization
     if (this.hasValidToken() && this.isTokenExpired()) {
       this.logout();
+    } else if (this.hasValidToken() && !this.isTokenExpired()) {
+      // If logged in but role is missing (old session), fetch profile to get role info
+      const user = this.getCurrentUser();
+      if (!user?.role) {
+        this.fetchUserProfile().subscribe({
+          next: (profile) => {
+            // Update stored user with role/name from profile
+            const updatedUser: User = {
+              username: profile.username,
+              token: this.getToken()!,
+              role: profile.role,
+              firstName: profile.firstName,
+              lastName: profile.lastName
+            };
+            localStorage.setItem(this.USER_KEY, JSON.stringify(updatedUser));
+            this.currentUserSubject.next(updatedUser);
+          },
+          error: () => {} // silently fail - user can re-login
+        });
+      }
     }
   }
 
@@ -73,7 +99,10 @@ export class AuthService {
         this.isAuthenticatedSubject.next(true);
         this.currentUserSubject.next({
           username: response.username,
-          token: response.token
+          token: response.token,
+          role: response.role,
+          firstName: response.firstName,
+          lastName: response.lastName
         });
 
         // Handle redirect after successful login
@@ -149,7 +178,10 @@ export class AuthService {
     localStorage.setItem(this.TOKEN_KEY, response.token);
     localStorage.setItem(this.USER_KEY, JSON.stringify({
       username: response.username,
-      token: response.token
+      token: response.token,
+      role: response.role,
+      firstName: response.firstName,
+      lastName: response.lastName
     }));
   }
 
@@ -208,5 +240,36 @@ export class AuthService {
   // Get user profile from subject
   getUserProfile(): UserProfile | null {
     return this.userProfileSubject.value;
+  }
+
+  // Role helpers
+  getUserRole(): string {
+    const user = this.getCurrentUser();
+    if (user?.role) return user.role;
+    // Fallback to fetched profile
+    const profile = this.userProfileSubject.value;
+    return profile?.role || '';
+  }
+
+  isAdmin(): boolean {
+    return this.getUserRole().toUpperCase() === 'ADMIN';
+  }
+
+  getCurrentUsername(): string {
+    const user = this.getCurrentUser();
+    return user?.username || '';
+  }
+
+  getCurrentFullName(): string {
+    const user = this.getCurrentUser();
+    if (user?.firstName) {
+      return ((user.firstName || '') + ' ' + (user.lastName || '')).trim();
+    }
+    // Fallback to fetched profile
+    const profile = this.userProfileSubject.value;
+    if (profile?.firstName) {
+      return ((profile.firstName || '') + ' ' + (profile.lastName || '')).trim();
+    }
+    return '';
   }
 }

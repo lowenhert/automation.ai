@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StbService, STBAutomationReport } from '../../../shared/services/stb.service';
+import { AuthService } from '../../../shared/services/auth.service';
 import * as XLSX from 'xlsx';
 
 interface STBBox {
@@ -20,6 +21,8 @@ interface STBBox {
 })
 export class StbboxesComponent implements OnInit {
   private stbService = inject(StbService);
+  private authService = inject(AuthService);
+  isAdmin = false;
 
   stbBoxes: STBBox[] = [];
   filteredStbBoxes: STBBox[] = [];
@@ -43,14 +46,23 @@ export class StbboxesComponent implements OnInit {
   reportSearchTerm = '';
   viewingReport: STBAutomationReport | null = null;
 
-  // Excel Viewer
+  // Excel Viewer (full-page detail)
   showExcelViewer = false;
   excelData: any[][] = [];
   excelSheetNames: string[] = [];
   activeSheet = '';
   excelFileName = '';
+  excelWorkbook: any = null;
+  excelSearch = '';
+  filteredExcelData: any[][] = [];
+  excelSummary = { total: 0, passed: 0, failed: 0, skipped: 0 };
 
   ngOnInit() {
+    const profile = this.authService.getUserProfile();
+    this.isAdmin = profile?.role === 'ADMIN';
+    if (!profile) {
+      this.authService.fetchUserProfile().subscribe(p => this.isAdmin = p.role === 'ADMIN');
+    }
     this.loadStbBoxes();
   }
 
@@ -206,15 +218,16 @@ export class StbboxesComponent implements OnInit {
   viewReport(report: STBAutomationReport) {
     this.reportsLoading = true;
     this.viewingReport = report;
+    this.excelSearch = '';
     this.stbService.downloadReport(report.id!).subscribe({
       next: (blob) => {
         const reader = new FileReader();
         reader.onload = (e: any) => {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          this.excelSheetNames = workbook.SheetNames;
-          this.activeSheet = workbook.SheetNames[0];
-          this.excelData = XLSX.utils.sheet_to_json(workbook.Sheets[this.activeSheet], { header: 1 });
+          this.excelWorkbook = XLSX.read(data, { type: 'array' });
+          this.excelSheetNames = this.excelWorkbook.SheetNames;
+          this.activeSheet = this.excelWorkbook.SheetNames[0];
+          this.loadSheetData(this.activeSheet);
           this.excelFileName = report.fileName;
           this.showExcelViewer = true;
           this.reportsLoading = false;
@@ -228,19 +241,47 @@ export class StbboxesComponent implements OnInit {
     });
   }
 
-  switchSheet(sheetName: string, report: STBAutomationReport) {
-    this.stbService.downloadReport(report.id!).subscribe({
-      next: (blob) => {
-        const reader = new FileReader();
-        reader.onload = (e: any) => {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          this.activeSheet = sheetName;
-          this.excelData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
-        };
-        reader.readAsArrayBuffer(blob);
+  switchSheet(sheetName: string) {
+    this.activeSheet = sheetName;
+    this.excelSearch = '';
+    this.loadSheetData(sheetName);
+  }
+
+  private loadSheetData(sheetName: string) {
+    if (!this.excelWorkbook) return;
+    this.excelData = XLSX.utils.sheet_to_json(this.excelWorkbook.Sheets[sheetName], { header: 1 });
+    this.filteredExcelData = [...this.excelData];
+    this.computeExcelSummary();
+  }
+
+  filterExcelData() {
+    const term = this.excelSearch.toLowerCase().trim();
+    if (!term) {
+      this.filteredExcelData = [...this.excelData];
+      return;
+    }
+    // Always keep header (row 0)
+    const header = this.excelData.length > 0 ? [this.excelData[0]] : [];
+    const body = this.excelData.slice(1).filter(row =>
+      row.some(cell => cell != null && String(cell).toLowerCase().includes(term))
+    );
+    this.filteredExcelData = [...header, ...body];
+  }
+
+  private computeExcelSummary() {
+    let total = 0, passed = 0, failed = 0, skipped = 0;
+    const rows = this.excelData.slice(1); // skip header
+    for (const row of rows) {
+      if (!row || row.length === 0) continue;
+      for (const cell of row) {
+        if (cell == null) continue;
+        const val = String(cell).toUpperCase().trim();
+        if (val === 'PASSED') { passed++; total++; }
+        else if (val === 'FAILED') { failed++; total++; }
+        else if (val === 'SKIPPED') { skipped++; total++; }
       }
-    });
+    }
+    this.excelSummary = { total, passed, failed, skipped };
   }
 
   downloadReportFile(report: STBAutomationReport) {
@@ -269,6 +310,18 @@ export class StbboxesComponent implements OnInit {
   closeExcelViewer() {
     this.showExcelViewer = false;
     this.excelData = [];
+    this.filteredExcelData = [];
+    this.excelWorkbook = null;
+    this.excelSearch = '';
+  }
+
+  getCellStatusClass(cell: any): string {
+    if (cell == null) return '';
+    const val = String(cell).toUpperCase().trim();
+    if (val === 'PASSED') return 'text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/30 font-bold';
+    if (val === 'FAILED') return 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/30 font-bold';
+    if (val === 'SKIPPED') return 'text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30 font-bold';
+    return '';
   }
 
   hasFailedStatus(row: any[]): boolean {

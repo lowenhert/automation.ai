@@ -1,0 +1,327 @@
+<!-- ── Loading ──────────────────────────────────────────────────── -->
+<div *ngIf="isLoading" class="flex justify-center items-center py-24">
+  <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#465FFF]"></div>
+</div>
+
+<div *ngIf="!isLoading" class="space-y-5">
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ROW 1: Welcome Banner + Recent Projects                      -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    <!-- Welcome Card -->
+    <div class="lg:col-span-2 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold text-gray-800 dark:text-white">Welcome, {{ userName }}!</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Here's your test management overview for today.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button *ngIf="isAdminUser" (click)="goToProjects()"
+          class="h-[38px] px-5 text-sm font-semibold text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors shadow-sm">
+          Create Project
+        </button>
+        <button (click)="goToRuns()"
+          class="h-[38px] px-5 text-sm font-semibold text-[#465FFF] bg-[#465FFF]/10 hover:bg-[#465FFF]/20 rounded-lg transition-colors">
+          View Runs
+        </button>
+      </div>
+    </div>
+
+    <!-- Recent Projects -->
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">Recent Projects</h2>
+        <button (click)="goToProjects()" class="text-[11px] text-[#465FFF] hover:underline font-medium">View All</button>
+      </div>
+      <div class="divide-y divide-gray-50 dark:divide-gray-800 max-h-[140px] overflow-y-auto">
+        <div *ngFor="let p of projects.slice(0, 4)" class="px-4 py-2 flex items-center gap-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer" (click)="goToProjects()">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            [ngClass]="p.category === 'AUTOMATION' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'">
+            <svg class="w-3.5 h-3.5" [ngClass]="p.category === 'AUTOMATION' ? 'text-blue-600' : 'text-green-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{{ p.name }}</p>
+            <p class="text-[10px] text-gray-400">{{ p.casesCount ?? 0 }} cases · {{ p.runsCount ?? 0 }} runs</p>
+          </div>
+        </div>
+        <div *ngIf="projects.length === 0" class="p-4 text-center text-xs text-gray-400">No projects yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ROW 2: Stats Cards                                           -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Active Projects -->
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 text-center">
+      <div class="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 mx-auto flex items-center justify-center mb-2">
+        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+      </div>
+      <p class="text-3xl font-bold text-gray-800 dark:text-white">{{ totalProjects }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active Projects</p>
+    </div>
+    <!-- Test Runs -->
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 text-center">
+      <div class="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 mx-auto flex items-center justify-center mb-2">
+        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <p class="text-3xl font-bold text-gray-800 dark:text-white">{{ totalRuns }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Test Runs</p>
+    </div>
+    <!-- Active Tests -->
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 text-center">
+      <div class="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-900/40 mx-auto flex items-center justify-center mb-2">
+        <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+      </div>
+      <p class="text-3xl font-bold text-gray-800 dark:text-white">{{ totalCases }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active Tests</p>
+    </div>
+    <!-- Overdue / Pass Rate -->
+    <div class="rounded-2xl border dark:bg-white/[0.03] p-5 text-center"
+      [ngClass]="overdueRuns.length > 0 ? 'border-red-200 bg-red-50/50 dark:border-red-900/50' : 'border-gray-200 bg-white dark:border-gray-800'">
+      <div class="w-11 h-11 rounded-xl mx-auto flex items-center justify-center mb-2"
+        [ngClass]="overdueRuns.length > 0 ? 'bg-red-100 dark:bg-red-900/40' : 'bg-green-100 dark:bg-green-900/40'">
+        <svg *ngIf="overdueRuns.length > 0" class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <svg *ngIf="overdueRuns.length === 0" class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <p class="text-3xl font-bold" [ngClass]="overdueRuns.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white'">
+        {{ overdueRuns.length > 0 ? overdueRuns.length : overallPassRate + '%' }}
+      </p>
+      <p class="text-xs mt-0.5" [ngClass]="overdueRuns.length > 0 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'">
+        {{ overdueRuns.length > 0 ? 'Overdue Runs' : 'Pass Rate' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ROW 3: Active Test Runs + My Assigned Tasks                  -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+    <!-- Active Test Runs (3 cols) -->
+    <div class="lg:col-span-3 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">Active Test Runs</h2>
+        <button (click)="goToRuns()" class="text-[11px] text-[#465FFF] hover:underline font-medium">View All</button>
+      </div>
+      <div *ngIf="activeRuns.length === 0" class="p-10 text-center">
+        <p class="text-sm text-gray-400">No active test runs.</p>
+      </div>
+      <div *ngIf="activeRuns.length > 0" class="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[320px] overflow-y-auto">
+        <div *ngFor="let run of activeRuns"
+          (click)="goToRuns()"
+          class="rounded-xl border border-gray-100 dark:border-gray-800 p-3.5 hover:shadow-md hover:border-[#465FFF]/30 transition-all cursor-pointer group">
+          <!-- Status + Test Type -->
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" [ngClass]="getRunStatusClass(run)">
+              {{ getRunStatusLabel(run) }}
+            </span>
+            <span *ngIf="run.testType" class="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 font-medium">{{ run.testType }}</span>
+          </div>
+          <!-- Run Name -->
+          <h3 class="text-sm font-bold text-gray-800 dark:text-white group-hover:text-[#465FFF] transition-colors truncate">{{ run.name }}</h3>
+          <!-- Progress -->
+          <div class="mt-2">
+            <div class="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+              <span>{{ getProgressPercent(run) }}% Done</span>
+              <span>{{ run.totalCases ?? 0 }} Tests</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden flex">
+              <div class="h-full bg-green-500 transition-all" [style.width.%]="(run.totalCases ?? 0) ? ((run.passedCount ?? 0) / (run.totalCases ?? 1) * 100) : 0"></div>
+              <div class="h-full bg-red-500 transition-all" [style.width.%]="(run.totalCases ?? 0) ? ((run.failedCount ?? 0) / (run.totalCases ?? 1) * 100) : 0"></div>
+              <div class="h-full bg-purple-500 transition-all" [style.width.%]="(run.totalCases ?? 0) ? ((run.blockedCount ?? 0) / (run.totalCases ?? 1) * 100) : 0"></div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="flex items-center justify-between mt-2.5 text-[10px]">
+            <span *ngIf="run.assignedTo" class="text-blue-500 font-medium truncate max-w-[60%]">{{ run.assignedTo }}</span>
+            <span *ngIf="!run.assignedTo" class="text-gray-400">Unassigned</span>
+            <span *ngIf="run.stbBoxName" class="text-gray-400 truncate">📦 {{ run.stbBoxName }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Assigned Tasks (2 cols) -->
+    <div class="lg:col-span-2 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">{{ isAdminUser ? 'Assigned Tasks' : 'My Tasks' }}</h2>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">{{ myAssignedTasks.length }}</span>
+      </div>
+      <div *ngIf="myAssignedTasks.length === 0" class="p-10 text-center">
+        <p class="text-sm text-gray-400">No assigned tasks.</p>
+      </div>
+      <div *ngIf="myAssignedTasks.length > 0" class="max-h-[320px] overflow-y-auto">
+        <!-- Table Header -->
+        <div class="grid grid-cols-12 gap-2 px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900">
+          <div class="col-span-1">P</div>
+          <div class="col-span-6">Title</div>
+          <div class="col-span-5 text-right">Deadline</div>
+        </div>
+        <!-- Table Rows -->
+        <div *ngFor="let run of myAssignedTasks"
+          (click)="goToRuns()"
+          class="grid grid-cols-12 gap-2 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer border-b border-gray-50 dark:border-gray-800/50 items-center">
+          <!-- Priority -->
+          <div class="col-span-1">
+            <div class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold" [ngClass]="getPriorityClass(run)">
+              {{ getPriorityIcon(run) }}
+            </div>
+          </div>
+          <!-- Title + Assignee -->
+          <div class="col-span-6 min-w-0">
+            <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{{ run.name }}</p>
+            <p class="text-[10px] text-gray-400 truncate">{{ run.assignedTo || 'Unassigned' }}</p>
+          </div>
+          <!-- Deadline -->
+          <div class="col-span-5 text-right">
+            <span *ngIf="run.deadline" class="text-[10px] font-medium px-2 py-0.5 rounded-full" [ngClass]="getDeadlineClass(run)">
+              {{ run.deadline | date:'MMM d' }}
+            </span>
+            <span *ngIf="!run.deadline" class="text-[10px] text-gray-400">No deadline</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ROW 4: Test Execution Overview + Project Progress            -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+    <!-- Test Execution Overview (3 cols) -->
+    <div class="lg:col-span-3 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+        <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">Test Execution Overview</h2>
+        <p class="text-[10px] text-gray-400 mt-0.5">Tests per project</p>
+      </div>
+      <div class="p-4 flex flex-col md:flex-row items-center gap-4">
+        <!-- Bar Chart -->
+        <div class="flex-1 w-full" *ngIf="barSeries.length > 0 && projects.length > 0">
+          <apx-chart
+            [series]="barSeries"
+            [chart]="barChart"
+            [xaxis]="barXAxis"
+            [yaxis]="barYAxis"
+            [colors]="barColors"
+            [plotOptions]="barPlotOptions"
+            [dataLabels]="barDataLabels"
+            [grid]="barGrid"
+            [fill]="barFill"
+            [legend]="barLegend"
+          ></apx-chart>
+        </div>
+        <!-- Donut Chart -->
+        <div class="w-52 flex-shrink-0">
+          <apx-chart
+            [series]="donutSeries"
+            [chart]="donutChart"
+            [labels]="donutLabels"
+            [colors]="donutColors"
+            [plotOptions]="donutPlotOptions"
+            [legend]="donutLegend"
+            [dataLabels]="donutDataLabels"
+          ></apx-chart>
+          <!-- Legend -->
+          <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
+            <span class="flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Pass: {{ overallPassRate }}%
+            </span>
+            <span class="flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Fail: {{ totalFailed }}
+            </span>
+            <span class="flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Blocked: {{ totalBlocked }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Progress (2 cols) -->
+    <div class="lg:col-span-2 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+        <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">Project Progress</h2>
+      </div>
+      <div *ngIf="projects.length === 0" class="p-10 text-center text-sm text-gray-400">No projects</div>
+      <div *ngIf="projects.length > 0" class="p-4 space-y-4 max-h-[310px] overflow-y-auto">
+        <div *ngFor="let p of projects.slice(0, 6)">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[70%]">{{ p.name }}</p>
+            <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400">{{ getProjectProgress(p) }}%</span>
+          </div>
+          <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+            <div class="h-full rounded-full transition-all"
+              [style.width.%]="getProjectProgress(p)"
+              [ngClass]="{
+                'bg-green-500': getProjectProgress(p) >= 80,
+                'bg-blue-500': getProjectProgress(p) >= 40 && getProjectProgress(p) < 80,
+                'bg-amber-500': getProjectProgress(p) > 0 && getProjectProgress(p) < 40,
+                'bg-gray-300 dark:bg-gray-600': getProjectProgress(p) === 0
+              }"></div>
+          </div>
+          <div class="flex items-center justify-between mt-0.5 text-[10px] text-gray-400">
+            <span>{{ p.executedCount ?? 0 }} / {{ p.casesCount ?? 0 }} executed</span>
+            <span>{{ p.runsCount ?? 0 }} runs</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ROW 5: Overdue Alert (only if overdue runs exist)            -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div *ngIf="overdueRuns.length > 0" class="rounded-2xl border border-red-200 bg-red-50/50 dark:border-red-900/40 dark:bg-red-900/10 p-4">
+    <div class="flex items-center gap-2 mb-3">
+      <svg class="w-5 h-5 text-red-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+      </svg>
+      <h3 class="text-sm font-bold text-red-700 dark:text-red-400">Overdue Runs — Immediate Attention Required</h3>
+    </div>
+    <div class="space-y-2">
+      <div *ngFor="let run of overdueRuns"
+        class="flex items-center justify-between rounded-xl border border-red-100 dark:border-red-900/30 bg-white dark:bg-gray-900/50 px-4 py-2.5 cursor-pointer hover:shadow-sm transition-all"
+        (click)="goToRuns()">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+            <span class="text-red-600 dark:text-red-400 text-xs font-bold">{{ run.assignedTo ? run.assignedTo.charAt(0).toUpperCase() : '?' }}</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-800 dark:text-white">{{ run.name }}</p>
+            <div class="flex items-center gap-2 text-[10px] flex-wrap">
+              <span *ngIf="run.assignedTo" class="text-red-500 font-medium">{{ run.assignedTo }}</span>
+              <span class="text-red-400">Overdue by {{ getDaysLeft(run) * -1 }} day{{ getDaysLeft(run) * -1 !== 1 ? 's' : '' }}</span>
+              <span *ngIf="run.testType" class="px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">{{ run.testType }}</span>
+              <span *ngIf="run.stbBoxName" class="text-gray-400">📦 {{ run.stbBoxName }}</span>
+              <span class="text-gray-400">{{ getProjectName(run.projectId) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="text-xs font-bold text-red-600">{{ getProgressPercent(run) }}%</p>
+          <div class="w-20 h-1.5 rounded-full bg-red-100 dark:bg-red-900/30 overflow-hidden">
+            <div class="h-full bg-red-500 rounded-full" [style.width.%]="getProgressPercent(run)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

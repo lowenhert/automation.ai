@@ -7,10 +7,10 @@ import { NotificationService, Notification } from '../../../services/notificatio
   selector: 'app-notification-container',
   imports: [CommonModule],
   template: `
-    <div class="fixed top-4 right-4 z-[99999] space-y-3 max-w-sm">
+    <div class="fixed top-4 right-4 z-[99999] space-y-3 max-w-sm pointer-events-none">
       @for (notification of notifications; track notification.id) {
         <div 
-          class="transform transition-all duration-300 ease-in-out rounded-lg border shadow-lg"
+          class="pointer-events-auto transform transition-all duration-300 ease-in-out rounded-lg border shadow-lg"
           [ngClass]="getNotificationClasses(notification.type)"
           role="alert"
         >

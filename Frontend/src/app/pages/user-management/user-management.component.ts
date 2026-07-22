@@ -39,6 +39,9 @@ export class UserManagementComponent implements OnInit {
   isEditModalOpen = false;
   selectedUser: UserProfile | null = null;
 
+  // Edit form data
+  editUser: { id?: number; username: string; email: string; firstName: string; lastName: string; phoneNumber: string; role: string; provider: string; password: string } = { username: '', email: '', firstName: '', lastName: '', phoneNumber: '', role: 'USER', provider: 'local', password: '' };
+
   // Form data
   newUser: CreateUserRequest = {
     username: '',
@@ -88,12 +91,53 @@ export class UserManagementComponent implements OnInit {
 
   openEditModal(user: UserProfile) {
     this.selectedUser = user;
+    this.editUser = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      provider: user.provider,
+      password: ''
+    };
     this.isEditModalOpen = true;
   }
 
   closeEditModal() {
     this.isEditModalOpen = false;
     this.selectedUser = null;
+    this.editUser = { username: '', email: '', firstName: '', lastName: '', phoneNumber: '', role: 'USER', provider: 'local', password: '' };
+  }
+
+  saveEditUser() {
+    if (!this.selectedUser) return;
+    const updateData: Partial<CreateUserRequest> = {
+      username: this.editUser.username,
+      email: this.editUser.email,
+      firstName: this.editUser.firstName,
+      lastName: this.editUser.lastName,
+      phoneNumber: this.editUser.phoneNumber,
+      role: this.editUser.role,
+      provider: this.editUser.provider
+    };
+    if (this.editUser.password && this.editUser.password.trim()) {
+      updateData.password = this.editUser.password;
+    }
+    this.userManagementService.updateUser(this.selectedUser.id, updateData).subscribe({
+      next: () => {
+        this.notificationService.showSuccess('Success', `User "${this.selectedUser!.username}" updated successfully`);
+        this.loadUsers();
+        this.closeEditModal();
+      },
+      error: (error) => {
+        let errorMessage = 'Failed to update user';
+        if (error.error?.message) errorMessage = error.error.message;
+        else if (error.error?.error) errorMessage = error.error.error;
+        this.notificationService.showError('Update Failed', errorMessage);
+      }
+    });
   }
 
   // Form methods
@@ -195,6 +239,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   toggleUserStatus(user: UserProfile) {
+    const newActiveStatus = !user.active;
     const updatedData: Partial<CreateUserRequest> = { 
       username: user.username,
       email: user.email,
@@ -202,12 +247,13 @@ export class UserManagementComponent implements OnInit {
       lastName: user.lastName,
       phoneNumber: user.phoneNumber,
       role: user.role,
-      provider: user.provider
+      provider: user.provider,
+      active: newActiveStatus
     };
     
     this.userManagementService.updateUser(user.id, updatedData).subscribe({
       next: () => {
-        this.notificationService.showSuccess('Success', `User ${user.username} updated successfully`);
+        this.notificationService.showSuccess('Success', `User ${user.username} ${newActiveStatus ? 'activated' : 'deactivated'} successfully`);
         this.loadUsers(); // Reload users list
       },
       error: (error) => {

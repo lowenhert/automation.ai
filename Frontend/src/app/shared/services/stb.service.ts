@@ -246,6 +246,44 @@ export class StbService {
       .pipe(catchError(this.handleError));
   }
 
+  // ─── Real-time Logs ─────────────────────────────────────────────────────
+
+  getExecutionLogs(executionId: number): Observable<string[]> {
+    return this.http.get<string[]>(`${this.execUrl}/${executionId}/logs`)
+      .pipe(catchError(this.handleError));
+  }
+
+  streamExecutionLogs(executionId: number): EventSource {
+    return new EventSource(`${this.execUrl}/${executionId}/logs/stream`);
+  }
+
+  // ─── Script File Management ─────────────────────────────────────────────
+
+  listScripts(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.execUrl}/scripts`)
+      .pipe(catchError(this.handleError));
+  }
+
+  getScript(fileName: string): Observable<{ name: string; content: string }> {
+    return this.http.get<{ name: string; content: string }>(`${this.execUrl}/scripts/${fileName}`)
+      .pipe(catchError(this.handleError));
+  }
+
+  createScript(name: string, content: string): Observable<any> {
+    return this.http.post(`${this.execUrl}/scripts`, { name, content })
+      .pipe(catchError(this.handleError));
+  }
+
+  updateScript(fileName: string, content: string): Observable<any> {
+    return this.http.put(`${this.execUrl}/scripts/${fileName}`, { content })
+      .pipe(catchError(this.handleError));
+  }
+
+  deleteScript(fileName: string): Observable<any> {
+    return this.http.delete(`${this.execUrl}/scripts/${fileName}`)
+      .pipe(catchError(this.handleError));
+  }
+
   /**
    * Handle HTTP errors
    * @param error - The error response

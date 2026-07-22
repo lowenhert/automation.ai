@@ -20,6 +20,7 @@ public class StbExecutionService {
     private final StbTestCaseRepository testCaseRepo;
     private final StbExecutionRepository executionRepo;
     private final StbExecutionResultRepository resultRepo;
+    private final ScriptLogService scriptLogService;
 
     // ─── Test Cases ─────────────────────────────────────────────────────────
 
@@ -133,7 +134,7 @@ public class StbExecutionService {
 
     // ─── Trigger Execution ──────────────────────────────────────────────────
 
-    private static final String PYTHON_PROJECT_PATH = "C:\\Tata Play Long Run Binge Project\\Long-Run-Automation-with-Parallel-Execution";
+    private static final String PYTHON_PROJECT_PATH = System.getProperty("user.dir") + "/../Long-Run-Automation-with-Parallel-Execution";
 
     public ExecutionResponse triggerExecution(Long id, String deviceId, List<String> modules) {
         StbExecution exec = executionRepo.findById(id).orElseThrow(() ->
@@ -159,22 +160,26 @@ public class StbExecutionService {
                 pb.redirectErrorStream(true);
 
                 log.info("Triggering Python test runner: execId={}, device={}, modules={}", id, deviceId, modulesStr);
+                scriptLogService.initExecution(id);
+                scriptLogService.appendLog(id, "[SYSTEM] Starting execution: " + modulesStr);
                 Process process = pb.start();
 
-                // Log output in background
+                // Capture and stream output in real-time
                 new Thread(() -> {
                     try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             log.info("[PythonRunner:{}] {}", id, line);
+                            scriptLogService.appendLog(id, line);
                         }
                     } catch (Exception e) {
                         log.warn("Error reading Python runner output: {}", e.getMessage());
                     }
-                }).start();
+                }, "log-reader-" + id).start();
 
                 int exitCode = process.waitFor();
                 log.info("Python runner finished: execId={}, exitCode={}", id, exitCode);
+                scriptLogService.appendLog(id, "[SYSTEM] Process finished with exit code: " + exitCode);
 
                 // If the script didn't update status, do it here
                 StbExecution finalExec = executionRepo.findById(id).orElse(null);
@@ -186,9 +191,11 @@ public class StbExecutionService {
                     }
                     executionRepo.save(finalExec);
                 }
+                scriptLogService.cleanup(id);
 
             } catch (Exception e) {
                 log.error("Failed to trigger execution {}: {}", id, e.getMessage());
+                scriptLogService.appendLog(id, "[ERROR] " + e.getMessage());
                 StbExecution failedExec = executionRepo.findById(id).orElse(null);
                 if (failedExec != null) {
                     failedExec.setStatus("FAILED");

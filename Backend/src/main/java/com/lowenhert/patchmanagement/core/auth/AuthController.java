@@ -1,6 +1,7 @@
 package com.lowenhert.patchmanagement.core.auth;
 
 import com.lowenhert.patchmanagement.core.config.exception.BadRequestException;
+import com.lowenhert.patchmanagement.core.user.User;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,9 +26,15 @@ public class AuthController {
         }
 
         log.info("Login request received for user: {}", request.getUsername());
-        String token = authService.login(request.getUsername(), request.getPassword());
+        AuthService.LoginResult loginResult = authService.login(request.getUsername(), request.getPassword());
         log.info("Login successful for user: {}", request.getUsername());
-        return ResponseEntity.ok(new AuthResponse(token, request.getUsername()));
+        return ResponseEntity.ok(new AuthResponse(
+            loginResult.getToken(),
+            loginResult.getUser().getUsername(),
+            loginResult.getUser().getRole(),
+            loginResult.getUser().getFirstName(),
+            loginResult.getUser().getLastName()
+        ));
     }
 
     @Data
@@ -40,5 +47,8 @@ public class AuthController {
     public static class AuthResponse {
         private final String token;
         private final String username;
+        private final String role;
+        private final String firstName;
+        private final String lastName;
     }
 }

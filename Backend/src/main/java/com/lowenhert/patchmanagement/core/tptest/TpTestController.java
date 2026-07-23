@@ -168,9 +168,17 @@ public class TpTestController {
     // ═══════════════════════════════════════════════════════════════════════
 
     @PostMapping("/run-cases/{runCaseId}/results")
-    public ResponseEntity<TpResult> addResult(@PathVariable Long runCaseId, @RequestBody TpResult result) {
-        log.info("Adding result for runCase {}: status={}", runCaseId, result.getStatus());
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.addResult(runCaseId, result));
+    public ResponseEntity<TpResult> addResult(@PathVariable Long runCaseId, @RequestBody Map<String, String> body) {
+        log.info("Adding result for runCase {}: status={}", runCaseId, body.get("status"));
+        TpResult result = TpResult.builder()
+                .status(body.get("status"))
+                .comment(body.get("comment"))
+                .executedBy(body.get("executedBy"))
+                .defectLink(body.get("defectLink"))
+                .build();
+        String actualResult = body.get("actualResult");
+        String remark = body.get("remark");
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.addResult(runCaseId, result, actualResult, remark));
     }
 
     @GetMapping("/run-cases/{runCaseId}/results")

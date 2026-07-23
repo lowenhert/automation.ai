@@ -568,9 +568,22 @@
 
           <!-- Result Actions -->
           <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
-            <div class="mb-3">
-              <textarea [(ngModel)]="resultComment" rows="2" placeholder="Add a comment (optional)..."
-                class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-900 text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+            <div class="space-y-3 mb-3">
+              <div>
+                <label class="block text-[10px] text-gray-400 uppercase font-semibold mb-1">Actual Result</label>
+                <textarea [(ngModel)]="actualResultInput" rows="2" placeholder="Enter actual result observed during execution..."
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-900 text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+              </div>
+              <div>
+                <label class="block text-[10px] text-gray-400 uppercase font-semibold mb-1">Remarks</label>
+                <textarea [(ngModel)]="remarkInput" rows="2" placeholder="Add any remarks or observations..."
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-900 text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+              </div>
+              <div>
+                <label class="block text-[10px] text-gray-400 uppercase font-semibold mb-1">Comment (optional)</label>
+                <textarea [(ngModel)]="resultComment" rows="2" placeholder="Add a comment..."
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-900 text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+              </div>
             </div>
             <div class="flex items-center gap-2">
               <button (click)="markResult('PASSED')"

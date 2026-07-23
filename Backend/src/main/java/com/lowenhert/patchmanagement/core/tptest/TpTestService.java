@@ -288,6 +288,8 @@ public class TpTestService {
             map.put("runId", rc.getRunId());
             map.put("caseId", rc.getCaseId());
             map.put("latestStatus", rc.getLatestStatus());
+            map.put("actualResult", rc.getActualResult());
+            map.put("remark", rc.getRemark());
 
             // Enrich with case details
             caseRepo.findById(rc.getCaseId()).ifPresent(tc -> {
@@ -295,8 +297,6 @@ public class TpTestService {
                 map.put("preconditions", tc.getPreconditions());
                 map.put("steps", tc.getSteps());
                 map.put("expectedResult", tc.getExpectedResult());
-                map.put("actualResult", tc.getActualResult());
-                map.put("remark", tc.getRemark());
                 map.put("assignedTo", tc.getAssignedTo());
             });
             return map;
@@ -308,14 +308,16 @@ public class TpTestService {
     // ═══════════════════════════════════════════════════════════════════════
 
     @Transactional
-    public TpResult addResult(Long runCaseId, TpResult result) {
+    public TpResult addResult(Long runCaseId, TpResult result, String actualResult, String remark) {
         result.setRunCaseId(runCaseId);
         TpResult saved = resultRepo.save(result);
 
-        // Update latest status on run case
+        // Update latest status and actual result/remark on run case
         TpRunCase rc = runCaseRepo.findById(runCaseId)
                 .orElseThrow(() -> new RuntimeException("RunCase not found: " + runCaseId));
         rc.setLatestStatus(result.getStatus());
+        if (actualResult != null) rc.setActualResult(actualResult);
+        if (remark != null) rc.setRemark(remark);
         runCaseRepo.save(rc);
 
         log.info("Added result for runCase {}: status={}", runCaseId, result.getStatus());

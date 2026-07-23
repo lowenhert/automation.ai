@@ -59,6 +59,8 @@ export class TpTestRunsComponent implements OnInit {
   activeRunCase: TpRunCase | null = null;
   executionLoading = false;
   resultComment = '';
+  actualResultInput = '';
+  remarkInput = '';
 
   // Detail view
   showDetailRun: TpTestRun | null = null;
@@ -308,14 +310,25 @@ export class TpTestRunsComponent implements OnInit {
   selectRunCase(rc: TpRunCase): void {
     this.activeRunCase = rc;
     this.resultComment = '';
+    this.actualResultInput = rc.actualResult || '';
+    this.remarkInput = rc.remark || '';
   }
 
   markResult(status: 'PASSED' | 'FAILED' | 'BLOCKED' | 'RETEST'): void {
     if (!this.activeRunCase) return;
-    this.tpService.addResult(this.activeRunCase.id!, { status, comment: this.resultComment }).subscribe({
+    this.tpService.addResult(this.activeRunCase.id!, {
+      status,
+      comment: this.resultComment || undefined,
+      actualResult: this.actualResultInput || undefined,
+      remark: this.remarkInput || undefined
+    }).subscribe({
       next: (result) => {
         this.activeRunCase!.latestStatus = status;
+        this.activeRunCase!.actualResult = this.actualResultInput || undefined;
+        this.activeRunCase!.remark = this.remarkInput || undefined;
         this.resultComment = '';
+        this.actualResultInput = '';
+        this.remarkInput = '';
         // Update run stats locally
         if (this.activeRun) {
           const stats = this.getRunStats(this.activeRun);

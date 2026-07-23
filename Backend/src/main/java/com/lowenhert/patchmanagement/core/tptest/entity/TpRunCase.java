@@ -23,4 +23,10 @@ public class TpRunCase {
 
     @Column(name = "latest_status")
     private String latestStatus; // PASSED, FAILED, BLOCKED, RETEST (null = untested)
+
+    @Column(name = "actual_result", columnDefinition = "TEXT")
+    private String actualResult;
+
+    @Column(columnDefinition = "TEXT")
+    private String remark;
 }

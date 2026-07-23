@@ -208,7 +208,7 @@ export class TpTestService {
   }
 
   // ─── Results ──────────────────────────────────────────────────────────
-  addResult(runCaseId: number, result: { status: string; comment?: string }): Observable<TpResult> {
+  addResult(runCaseId: number, result: { status: string; comment?: string; actualResult?: string; remark?: string }): Observable<TpResult> {
     return this.http.post<TpResult>(`${this.baseUrl}/run-cases/${runCaseId}/results`, result);
   }
 

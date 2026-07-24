@@ -20,12 +20,27 @@ export class TpTestProjectsComponent implements OnInit {
   isLoading = false;
   error: string | null = null;
 
+  // Search & Filters
+  searchQuery = '';
+  filterCategory = '';
+
   // Create modal
   showCreateModal = false;
   newProject: Partial<TpProject> = { name: '', description: '', category: 'MANUAL' };
   creating = false;
 
   isAdmin = false;
+
+  get filteredProjects(): TpProject[] {
+    return this.projects.filter(p => {
+      if (this.searchQuery) {
+        const q = this.searchQuery.toLowerCase();
+        if (!p.name.toLowerCase().includes(q) && !(p.description || '').toLowerCase().includes(q)) return false;
+      }
+      if (this.filterCategory && p.category !== this.filterCategory) return false;
+      return true;
+    });
+  }
 
   ngOnInit(): void {
     this.isAdmin = this.authService.isAdmin();

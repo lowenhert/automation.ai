@@ -50,6 +50,15 @@ export class TpTestSuitesComponent implements OnInit {
   // Expanded sections in tree
   expandedSections = new Set<number>();
 
+  // Tutorial
+  showTutorial = false;
+
+  // Detail / Edit case
+  selectedCase: TpTestCase | null = null;
+  editingCase: Partial<TpTestCase> = {};
+  isEditMode = false;
+  savingCase = false;
+
   ngOnInit(): void {
     this.isAdminUser = this.authService.isAdmin();
     this.authService.currentUser$.subscribe(user => {
@@ -163,6 +172,43 @@ export class TpTestSuitesComponent implements OnInit {
   deleteSuite(suite: TpSuite): void {
     if (!confirm(`Delete suite "${suite.name}" and all its contents?`)) return;
     this.tpService.deleteSuite(suite.id!).subscribe({ next: () => { this.activeSuite = null; this.loadSuites(); } });
+  }
+
+  // ─── Case Detail / Edit ─────────────────────────────────────────────
+  openCaseDetail(tc: TpTestCase): void {
+    this.selectedCase = { ...tc };
+    this.editingCase = { ...tc };
+    this.isEditMode = false;
+  }
+
+  closeCaseDetail(): void {
+    this.selectedCase = null;
+    this.isEditMode = false;
+  }
+
+  startEdit(): void {
+    this.editingCase = { ...this.selectedCase! };
+    this.isEditMode = true;
+  }
+
+  cancelEdit(): void {
+    this.editingCase = { ...this.selectedCase! };
+    this.isEditMode = false;
+  }
+
+  saveCase(): void {
+    if (!this.selectedCase?.id || !this.editingCase.title?.trim()) return;
+    this.savingCase = true;
+    this.tpService.updateCase(this.selectedCase.id, this.editingCase).subscribe({
+      next: (updated) => {
+        this.selectedCase = updated;
+        this.editingCase = { ...updated };
+        this.isEditMode = false;
+        this.savingCase = false;
+        this.selectSuite(this.activeSuite!);
+      },
+      error: () => { this.savingCase = false; }
+    });
   }
 
   goBack(): void {

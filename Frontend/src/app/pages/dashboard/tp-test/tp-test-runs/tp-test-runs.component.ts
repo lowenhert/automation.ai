@@ -47,6 +47,12 @@ export class TpTestRunsComponent implements OnInit {
   isAdminUser = false;
   currentUserFullName = '';
 
+  // Filters & Search
+  searchQuery = '';
+  filterStatus = ''; // '', 'IN_PROGRESS', 'COMPLETED', 'NOT_STARTED', 'OVERDUE'
+  filterAssignee = '';
+  filterTestType = '';
+
   // Create run
   showCreateRunModal = false;
   suites: TpSuite[] = [];
@@ -192,6 +198,40 @@ export class TpTestRunsComponent implements OnInit {
 
   get inProgressRunsCount(): number {
     return this.runs.filter(r => { const p = this.getProgressPercent(r); return p > 0 && p < 100; }).length;
+  }
+
+  get filteredRuns(): TpTestRun[] {
+    return this.runs.filter(r => {
+      // Search
+      if (this.searchQuery) {
+        const q = this.searchQuery.toLowerCase();
+        const nameMatch = r.name.toLowerCase().includes(q);
+        const assigneeMatch = r.assignedTo?.toLowerCase().includes(q);
+        const stbMatch = r.stbBoxName?.toLowerCase().includes(q);
+        if (!nameMatch && !assigneeMatch && !stbMatch) return false;
+      }
+      // Status filter
+      if (this.filterStatus) {
+        const p = this.getProgressPercent(r);
+        if (this.filterStatus === 'COMPLETED' && p !== 100) return false;
+        if (this.filterStatus === 'IN_PROGRESS' && (p === 0 || p === 100)) return false;
+        if (this.filterStatus === 'NOT_STARTED' && p !== 0) return false;
+        if (this.filterStatus === 'OVERDUE' && !this.isOverdue(r)) return false;
+      }
+      // Assignee filter
+      if (this.filterAssignee && r.assignedTo !== this.filterAssignee) return false;
+      // Test type filter
+      if (this.filterTestType && r.testType !== this.filterTestType) return false;
+      return true;
+    });
+  }
+
+  get uniqueAssignees(): string[] {
+    return [...new Set(this.runs.map(r => r.assignedTo).filter(Boolean))] as string[];
+  }
+
+  get uniqueTestTypes(): string[] {
+    return [...new Set(this.runs.map(r => r.testType).filter(Boolean))] as string[];
   }
 
   buildCharts(): void {

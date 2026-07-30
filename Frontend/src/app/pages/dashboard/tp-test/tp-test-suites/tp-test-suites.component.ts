@@ -50,6 +50,9 @@ export class TpTestSuitesComponent implements OnInit {
   // Expanded sections in tree
   expandedSections = new Set<number>();
 
+  // Active section for grid view
+  activeSection: TpSection | null = null;
+
   // Tutorial
   showTutorial = false;
 
@@ -95,6 +98,8 @@ export class TpTestSuitesComponent implements OnInit {
 
   selectSuite(suite: TpSuite): void {
     this.activeSuite = suite;
+    this.activeSection = null;
+    this.selectedCase = null;
     this.sectionsLoading = true;
     this.tpService.getSections(suite.id!).subscribe({
       next: (data) => { this.sections = data; this.sectionsLoading = false; },
@@ -123,6 +128,27 @@ export class TpTestSuitesComponent implements OnInit {
 
   getCasesForSection(sectionId: number): TpTestCase[] {
     return this.cases.filter(c => c.sectionId === sectionId);
+  }
+
+  selectSection(section: TpSection): void {
+    this.activeSection = section;
+    this.selectedCase = null;
+  }
+
+  backToSections(): void {
+    this.activeSection = null;
+  }
+
+  getCasesForActiveSection(): TpTestCase[] {
+    if (!this.activeSection) return [];
+    const ids = [this.activeSection.id!];
+    this.sections.filter(s => s.parentSectionId === this.activeSection!.id).forEach(c => ids.push(c.id!));
+    return this.cases.filter(c => ids.includes(c.sectionId));
+  }
+
+  getSectionTotalCases(sectionId: number): number {
+    const childIds = this.sections.filter(s => s.parentSectionId === sectionId).map(s => s.id!);
+    return this.cases.filter(c => c.sectionId === sectionId || childIds.includes(c.sectionId)).length;
   }
 
   // ─── Create Suite ─────────────────────────────────────────────────────
@@ -184,6 +210,7 @@ export class TpTestSuitesComponent implements OnInit {
   closeCaseDetail(): void {
     this.selectedCase = null;
     this.isEditMode = false;
+    // stay on activeSection so user goes back to cases grid
   }
 
   startEdit(): void {

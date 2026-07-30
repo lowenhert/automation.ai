@@ -1,0 +1,618 @@
+<div class="space-y-5">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-lg font-bold text-gray-800 dark:text-white tracking-wide">Box Inventory</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+        {{ isAdminUser ? 'Full inventory — add, assign, track & report' : 'Your assigned boxes' }}
+      </p>
+    </div>
+    <div *ngIf="isAdminUser" class="flex items-center gap-2">
+      <button (click)="showImportModal = true"
+        class="h-[36px] px-4 text-sm font-medium text-[#465FFF] border border-[#465FFF]/30 hover:bg-[#465FFF]/5 rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Import Excel
+      </button>
+      <button (click)="openAddBox()"
+        class="h-[36px] px-5 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Box
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats (boxes count only) ────────────────────────────────────── -->
+  <div class="grid grid-cols-3 gap-3">
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+      <p class="text-[10px] text-gray-400 uppercase font-semibold">{{ isAdminUser ? 'Total Boxes' : 'My Boxes' }}</p>
+      <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ stats.total }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+      <p class="text-[10px] text-blue-500 uppercase font-semibold">Assigned</p>
+      <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ stats.assigned }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] text-center">
+      <p class="text-[10px] text-green-500 uppercase font-semibold">Unassigned</p>
+      <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats.available }}</p>
+    </div>
+  </div>
+
+  <!-- ── Main Content ────────────────────────────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+
+    <!-- Tabs -->
+    <div class="flex border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
+      <!-- Admin tabs -->
+      <button *ngIf="isAdminUser" (click)="activeTab = 'boxes'" class="px-5 py-3 text-xs font-semibold transition-colors border-b-2 whitespace-nowrap"
+        [ngClass]="activeTab === 'boxes' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700'">
+        All Boxes
+      </button>
+      <button (click)="activeTab = 'my-boxes'" class="px-5 py-3 text-xs font-semibold transition-colors border-b-2 whitespace-nowrap"
+        [ngClass]="activeTab === 'my-boxes' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700'">
+        {{ isAdminUser ? 'User Assignments' : 'My Boxes' }}
+        <span *ngIf="myActiveAssignments.length && !isAdminUser" class="ml-1 text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">{{ myActiveAssignments.length }}</span>
+      </button>
+      <button *ngIf="isAdminUser" (click)="activeTab = 'history'" class="px-5 py-3 text-xs font-semibold transition-colors border-b-2 whitespace-nowrap"
+        [ngClass]="activeTab === 'history' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700'">
+        Assignment History
+      </button>
+      <button *ngIf="!isAdminUser" (click)="activeTab = 'history'" class="px-5 py-3 text-xs font-semibold transition-colors border-b-2 whitespace-nowrap"
+        [ngClass]="activeTab === 'history' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700'">
+        My History
+      </button>
+      <button *ngIf="isAdminUser" (click)="activeTab = 'report'" class="px-5 py-3 text-xs font-semibold transition-colors border-b-2 whitespace-nowrap"
+        [ngClass]="activeTab === 'report' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700'">
+        Reports
+      </button>
+    </div>
+
+    <!-- Filter Bar -->
+    <div *ngIf="activeTab !== 'report'" class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex flex-col md:flex-row md:items-center gap-3">
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" [(ngModel)]="searchQuery" placeholder="Search by box ID, location, user..."
+          class="w-full text-sm h-[36px] pl-9 pr-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+      </div>
+      <select *ngIf="isAdminUser" [(ngModel)]="filterType"
+        class="text-xs h-[36px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+        <option value="">All Types</option>
+        <option *ngFor="let bt of boxTypes" [value]="bt">{{ bt }}</option>
+      </select>
+      <select *ngIf="isAdminUser" [(ngModel)]="filterStatus"
+        class="text-xs h-[36px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+        <option value="">All Status</option>
+        <option value="AVAILABLE">Available</option>
+        <option value="ASSIGNED">Assigned</option>
+      </select>
+      <select *ngIf="isAdminUser && assignedUsers.length > 0" [(ngModel)]="filterAssignee"
+        class="text-xs h-[36px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+        <option value="">All Users</option>
+        <option *ngFor="let u of assignedUsers" [value]="u">{{ u }}</option>
+      </select>
+      <button *ngIf="searchQuery || filterType || filterStatus || filterAssignee"
+        (click)="searchQuery=''; filterType=''; filterStatus=''; filterAssignee=''"
+        class="text-xs h-[36px] px-3 text-red-500 hover:text-red-700 font-medium whitespace-nowrap">✕ Clear</button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="isLoading" class="flex justify-center py-16">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+    </div>
+
+    <!-- ═══ TAB: All Boxes (Admin only) ═══ -->
+    <div *ngIf="!isLoading && activeTab === 'boxes' && isAdminUser" class="p-4">
+      <div *ngIf="filteredBoxes.length === 0" class="py-12 text-center text-gray-400 text-sm">
+        No boxes found. Add boxes using the button above.
+      </div>
+
+      <div *ngIf="filteredBoxes.length > 0" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-[10px] uppercase text-gray-400 font-semibold tracking-wider">
+              <th class="text-left py-2 px-3">Box ID</th>
+              <th class="text-left py-2 px-3">Type</th>
+              <th class="text-left py-2 px-3">Status</th>
+              <th class="text-left py-2 px-3">Assigned To</th>
+              <th class="text-left py-2 px-3">Location</th>
+              <th class="text-left py-2 px-3">Assigned At</th>
+              <th class="text-left py-2 px-3">Notes</th>
+              <th class="text-right py-2 px-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let box of filteredBoxes" class="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+              <td class="py-2.5 px-3 font-bold text-gray-800 dark:text-white font-mono">{{ box.uniqueId }}</td>
+              <td class="py-2.5 px-3">
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" [ngClass]="getTypeClass(box.boxType)">{{ getTypeLabel(box.boxType) }}</span>
+              </td>
+              <td class="py-2.5 px-3">
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" [ngClass]="getStatusClass(box.status)">{{ box.status }}</span>
+              </td>
+              <td class="py-2.5 px-3">
+                <span *ngIf="box.assignedTo" class="text-xs text-blue-600 dark:text-blue-400 font-medium">{{ box.assignedTo }}</span>
+                <span *ngIf="!box.assignedTo" class="text-xs text-gray-400">—</span>
+              </td>
+              <td class="py-2.5 px-3 text-xs text-gray-600 dark:text-gray-300">{{ box.location || '—' }}</td>
+              <td class="py-2.5 px-3 text-xs text-gray-500">{{ getBoxAssignedTime(box) }}</td>
+              <td class="py-2.5 px-3 text-xs text-gray-500 max-w-[150px] truncate">{{ box.notes || '—' }}</td>
+              <td class="py-2.5 px-3 text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <button *ngIf="box.status === 'AVAILABLE'" (click)="openAssignModal(box)"
+                    class="h-[26px] px-2.5 text-[10px] font-medium text-white bg-[#465FFF] rounded-md hover:bg-[#3A4FE0] transition-colors">
+                    Assign
+                  </button>
+                  <button *ngIf="box.status === 'ASSIGNED'" (click)="returnBoxDirect(box)"
+                    class="h-[26px] px-2.5 text-[10px] font-medium text-green-600 border border-green-200 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                    Return
+                  </button>
+                  <button *ngIf="box.status === 'ASSIGNED'" (click)="viewBoxScreenshot(box)"
+                    class="h-[26px] px-2 text-[10px] text-purple-500 hover:text-purple-700 transition-colors" title="View Screenshot">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </button>
+                  <button (click)="deleteBox(box)"
+                    class="h-[26px] px-2 text-[10px] text-red-400 hover:text-red-600 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: My Boxes (User view) / User Assignments (Admin view) ═══ -->
+    <div *ngIf="!isLoading && activeTab === 'my-boxes'" class="p-4">
+
+      <!-- USER VIEW: Only their assigned boxes -->
+      <div *ngIf="!isAdminUser">
+        <div *ngIf="myActiveAssignments.length === 0" class="py-12 text-center text-gray-400 text-sm">
+          No boxes assigned to you currently.
+        </div>
+        <div *ngIf="myActiveAssignments.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div *ngFor="let a of myActiveAssignments"
+            class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-mono font-bold text-sm text-gray-800 dark:text-white">{{ a.boxUniqueId }}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" [ngClass]="getTypeClass(a.boxType)">{{ getTypeLabel(a.boxType) }}</span>
+            </div>
+            <div class="text-xs text-gray-500 space-y-1">
+              <p><span class="text-gray-400">Location:</span> {{ a.location }}</p>
+              <p><span class="text-gray-400">Assigned:</span> {{ a.assignedDate | date:'medium' }}</p>
+              <p><span class="text-gray-400">By:</span> {{ a.assignedBy }}</p>
+              <p *ngIf="a.notes"><span class="text-gray-400">Notes:</span> {{ a.notes }}</p>
+            </div>
+            <!-- Screenshot status -->
+            <div class="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <span *ngIf="a.screenshot" class="text-[10px] text-green-600 font-medium flex items-center gap-1">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                Screenshot uploaded
+              </span>
+              <span *ngIf="!a.screenshot" class="text-[10px] text-amber-500 font-medium">No screenshot</span>
+              <button (click)="openScreenshotUpload(a)"
+                class="h-[26px] px-2.5 text-[10px] font-medium text-[#465FFF] border border-[#465FFF]/30 rounded-md hover:bg-[#465FFF]/5 transition-colors">
+                {{ a.screenshot ? 'View/Update' : 'Upload SS' }}
+              </button>
+            </div>
+            <!-- Reassign to someone else -->
+            <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <button (click)="openReassignModal(a)"
+                class="w-full h-[30px] text-[10px] font-medium text-amber-600 border border-amber-200 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors flex items-center justify-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                Reassign to Someone
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN VIEW: See all active assignments — who has what, when -->
+      <div *ngIf="isAdminUser">
+        <div *ngIf="allActiveAssignments.length === 0" class="py-12 text-center text-gray-400 text-sm">
+          No active assignments currently.
+        </div>
+        <div *ngIf="allActiveAssignments.length > 0" class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-[10px] uppercase text-gray-400 font-semibold tracking-wider">
+                <th class="text-left py-2 px-3">Box ID</th>
+                <th class="text-left py-2 px-3">Type</th>
+                <th class="text-left py-2 px-3">Assigned To</th>
+                <th class="text-left py-2 px-3">Assigned By</th>
+                <th class="text-left py-2 px-3">Date & Time</th>
+                <th class="text-left py-2 px-3">Location</th>
+                <th class="text-left py-2 px-3">Screenshot</th>
+                <th class="text-right py-2 px-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let a of allActiveAssignments" class="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                <td class="py-2.5 px-3 font-mono font-bold text-gray-800 dark:text-white">{{ a.boxUniqueId }}</td>
+                <td class="py-2.5 px-3">
+                  <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" [ngClass]="getTypeClass(a.boxType)">{{ getTypeLabel(a.boxType) }}</span>
+                </td>
+                <td class="py-2.5 px-3 text-blue-600 dark:text-blue-400 font-medium">{{ a.assignedTo }}</td>
+                <td class="py-2.5 px-3 text-gray-500">{{ a.assignedBy }}</td>
+                <td class="py-2.5 px-3 text-gray-500 text-xs">{{ a.assignedDate | date:'medium' }}</td>
+                <td class="py-2.5 px-3 text-gray-600 dark:text-gray-300 text-xs">{{ a.location }}</td>
+                <td class="py-2.5 px-3">
+                  <span *ngIf="a.screenshot" class="text-[10px] text-green-600 cursor-pointer hover:underline flex items-center gap-1" (click)="openScreenshotUpload(a)">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    View
+                  </span>
+                  <span *ngIf="!a.screenshot" class="text-[10px] text-red-400">Missing</span>
+                </td>
+                <td class="py-2.5 px-3 text-right">
+                  <button (click)="returnBox(a)"
+                    class="h-[26px] px-2.5 text-[10px] font-medium text-green-600 border border-green-200 rounded-md hover:bg-green-50 transition-colors">
+                    Return
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: Assignment History (All users) ═══ -->
+    <div *ngIf="!isLoading && activeTab === 'history'" class="p-4">
+      <!-- Admin user-wise filter -->
+      <div *ngIf="isAdminUser" class="mb-4 flex items-center gap-3">
+        <label class="text-xs font-medium text-gray-500">Filter by User:</label>
+        <select [(ngModel)]="historyUserFilter"
+          class="text-xs h-[32px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+          <option value="">All Users</option>
+          <option *ngFor="let u of allHistoryUsers" [value]="u">{{ u }}</option>
+        </select>
+        <button *ngIf="historyUserFilter" (click)="historyUserFilter = ''" class="text-xs text-red-500 hover:text-red-700 font-medium">✕ Clear</button>
+      </div>
+      <div *ngIf="allAssignments.length === 0" class="py-12 text-center text-gray-400 text-sm">
+        No assignment records yet.
+      </div>
+      <div *ngIf="allAssignments.length > 0" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-[10px] uppercase text-gray-400 font-semibold tracking-wider">
+              <th class="text-left py-2 px-3">Box ID</th>
+              <th class="text-left py-2 px-3">Type</th>
+              <th class="text-left py-2 px-3">Assigned To</th>
+              <th class="text-left py-2 px-3">Assigned By</th>
+              <th class="text-left py-2 px-3">Date & Time</th>
+              <th class="text-left py-2 px-3">Location</th>
+              <th class="text-left py-2 px-3">Status</th>
+              <th class="text-left py-2 px-3">Screenshot</th>
+              <th class="text-right py-2 px-3">Return Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let a of allAssignments" class="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+              <td class="py-2.5 px-3 font-mono font-bold text-gray-800 dark:text-white">{{ a.boxUniqueId }}</td>
+              <td class="py-2.5 px-3">
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" [ngClass]="getTypeClass(a.boxType)">{{ getTypeLabel(a.boxType) }}</span>
+              </td>
+              <td class="py-2.5 px-3 text-blue-600 dark:text-blue-400 font-medium">{{ a.assignedTo }}</td>
+              <td class="py-2.5 px-3 text-gray-500">{{ a.assignedBy }}</td>
+              <td class="py-2.5 px-3 text-gray-500 text-xs">{{ a.assignedDate | date:'medium' }}</td>
+              <td class="py-2.5 px-3 text-gray-600 dark:text-gray-300 text-xs">{{ a.location }}</td>
+              <td class="py-2.5 px-3">
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" [ngClass]="getStatusClass(a.status)">{{ a.status }}</span>
+              </td>
+              <td class="py-2.5 px-3">
+                <span *ngIf="a.screenshot" class="text-[10px] text-green-600 cursor-pointer hover:underline" (click)="openScreenshotUpload(a)">View</span>
+                <span *ngIf="!a.screenshot" class="text-[10px] text-gray-400">—</span>
+              </td>
+              <td class="py-2.5 px-3 text-right text-xs text-gray-500">
+                {{ a.returnDate ? (a.returnDate | date:'medium') : '—' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: Reports (Admin) ═══ -->
+    <div *ngIf="!isLoading && activeTab === 'report' && isAdminUser" class="p-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-all">
+          <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <h3 class="text-sm font-bold text-gray-800 dark:text-white">All Boxes Report</h3>
+          <p class="text-xs text-gray-500 mt-1">Export all boxes with type, status, assignment &amp; location.</p>
+          <button (click)="exportBoxes()" class="mt-4 h-[32px] px-4 text-xs font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Download CSV
+          </button>
+        </div>
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-all">
+          <div class="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          </div>
+          <h3 class="text-sm font-bold text-gray-800 dark:text-white">Assignment History</h3>
+          <p class="text-xs text-gray-500 mt-1">Full history with timestamps — who got which box &amp; when.</p>
+          <button (click)="exportAssignments()" class="mt-4 h-[32px] px-4 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Download CSV
+          </button>
+        </div>
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-all">
+          <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </div>
+          <h3 class="text-sm font-bold text-gray-800 dark:text-white">Currently Assigned</h3>
+          <p class="text-xs text-gray-500 mt-1">All currently checked-out boxes with user details.</p>
+          <button (click)="exportMyBoxes()" class="mt-4 h-[32px] px-4 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Download CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ ADD BOX MODAL (Admin) ═══════ -->
+  <div *ngIf="showAddBoxModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showAddBoxModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Add New Box</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">BOX UNIQUE ID *</label>
+          <input type="text" [(ngModel)]="addForm.uniqueId" placeholder="e.g. STB-W001, BOX-B123"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">BOX TYPE *</label>
+          <select [(ngModel)]="addForm.boxType"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+            <option value="">Select type</option>
+            <option *ngFor="let bt of boxTypes" [value]="bt">{{ bt }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">LOCATION</label>
+          <select [(ngModel)]="addForm.location" (ngModelChange)="addForm.location === 'OTHER' ? showCustomLocation = true : showCustomLocation = false"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+            <option value="">Select location</option>
+            <option *ngFor="let loc of locationOptions" [value]="loc">{{ loc }}</option>
+            <option value="OTHER">Other (type custom)</option>
+          </select>
+          <input *ngIf="addForm.location === 'OTHER' || showCustomLocation" type="text" [(ngModel)]="customLocation" placeholder="Type custom location..."
+            class="w-full text-sm h-[36px] px-3 mt-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">NOTES</label>
+          <textarea [(ngModel)]="addForm.notes" rows="2" placeholder="Any remarks..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showAddBoxModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmAddBox()" [disabled]="!addForm.uniqueId.trim() || !addForm.boxType"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Add Box</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ ASSIGN MODAL (Admin — requires SS upload first) ═══════ -->
+  <div *ngIf="showAssignModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showAssignModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Assign Box</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        <span class="font-mono font-bold">{{ selectedBox?.uniqueId }}</span> —
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold" [ngClass]="getTypeClass(selectedBox?.boxType!)">{{ getTypeLabel(selectedBox?.boxType!) }}</span>
+      </p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ASSIGN TO *</label>
+          <select [(ngModel)]="assignForm.assignedTo"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+            <option value="">Select user</option>
+            <option *ngFor="let u of users" [value]="u.username">{{ u.firstName }} {{ u.lastName }} ({{ u.username }})</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">LOCATION</label>
+          <select [(ngModel)]="assignForm.location" (ngModelChange)="assignForm.location === 'OTHER' ? showCustomLocation = true : showCustomLocation = false"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+            <option value="">Select location</option>
+            <option *ngFor="let loc of locationOptions" [value]="loc">{{ loc }}</option>
+            <option value="OTHER">Other (type custom)</option>
+          </select>
+          <input *ngIf="assignForm.location === 'OTHER' || showCustomLocation" type="text" [(ngModel)]="customLocation" placeholder="Type custom location..."
+            class="w-full text-sm h-[36px] px-3 mt-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">NOTES</label>
+          <textarea [(ngModel)]="assignForm.notes" rows="2" placeholder="Purpose or additional info..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+        <!-- SS Upload (required before assign) -->
+        <div class="p-3 rounded-lg border-2 border-dashed" [ngClass]="assignScreenshotFile ? 'border-green-300 bg-green-50/50 dark:bg-green-900/10' : 'border-amber-300 bg-amber-50/50 dark:bg-amber-900/10'">
+          <label class="block text-xs font-medium mb-1" [ngClass]="assignScreenshotFile ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'">
+            SCREENSHOT * <span class="text-[10px]">(upload SS → then assign)</span>
+          </label>
+          <input type="file" accept="image/*" (change)="onAssignScreenshot($event)"
+            class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+          <div *ngIf="assignScreenshotFile" class="mt-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <img [src]="assignScreenshotFile" alt="Screenshot" class="w-full max-h-[120px] object-contain bg-gray-100 dark:bg-gray-800" />
+          </div>
+          <p *ngIf="!assignScreenshotFile" class="mt-1 text-[10px] text-red-500 font-medium">⚠ Screenshot is mandatory to assign</p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showAssignModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmAssign()" [disabled]="!assignForm.assignedTo || !assignScreenshotFile"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Assign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCREENSHOT VIEW/UPLOAD MODAL ═══════ -->
+  <div *ngIf="showScreenshotModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showScreenshotModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-lg p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Assignment Screenshot</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        Box <span class="font-mono font-bold">{{ selectedAssignment?.boxUniqueId }}</span> — assigned to <strong>{{ selectedAssignment?.assignedTo }}</strong>
+      </p>
+
+      <!-- Preview -->
+      <div *ngIf="screenshotPreview" class="mb-4 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+        <img [src]="screenshotPreview" alt="Screenshot" class="w-full max-h-[300px] object-contain bg-gray-100 dark:bg-gray-800" />
+      </div>
+      <div *ngIf="!screenshotPreview" class="mb-4 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-8 text-center">
+        <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <p class="text-xs text-gray-400">No screenshot uploaded yet</p>
+      </div>
+
+      <!-- Upload (user can update their own; admin can update any) -->
+      <div *ngIf="selectedAssignment?.assignedTo === currentUser?.username || isAdminUser">
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Upload/Update Screenshot (max 5MB)</label>
+        <input type="file" accept="image/*" (change)="onFileSelected($event)"
+          class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showScreenshotModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Close</button>
+        <button *ngIf="(selectedAssignment?.assignedTo === currentUser?.username || isAdminUser) && screenshotPreview"
+          (click)="confirmScreenshot()" [disabled]="!screenshotPreview"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Save Screenshot</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ REASSIGN MODAL (User reassigns to someone else) ═══════ -->
+  <div *ngIf="showReassignModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showReassignModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Reassign Box</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        <span class="font-mono font-bold">{{ reassignAssignment?.boxUniqueId }}</span> —
+        currently assigned to <strong>you</strong>
+      </p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">REASSIGN TO *</label>
+          <select [(ngModel)]="reassignForm.assignedTo"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+            <option value="">Select user</option>
+            <option *ngFor="let u of users" [value]="u.username" [disabled]="u.username === currentUser?.username">
+              {{ u.firstName }} {{ u.lastName }} ({{ u.username }})
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">LOCATION</label>
+          <select [(ngModel)]="reassignForm.location" (ngModelChange)="reassignForm.location === 'OTHER' ? showReassignCustomLocation = true : showReassignCustomLocation = false"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+            <option value="">Select location</option>
+            <option *ngFor="let loc of locationOptions" [value]="loc">{{ loc }}</option>
+            <option value="OTHER">Other (type custom)</option>
+          </select>
+          <input *ngIf="reassignForm.location === 'OTHER' || showReassignCustomLocation" type="text" [(ngModel)]="reassignCustomLocation" placeholder="Type custom location..."
+            class="w-full text-sm h-[36px] px-3 mt-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">NOTES</label>
+          <textarea [(ngModel)]="reassignForm.notes" rows="2" placeholder="Reason for reassignment..."
+            class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none resize-none"></textarea>
+        </div>
+        <!-- SS Upload (required) -->
+        <div class="p-3 rounded-lg border-2 border-dashed" [ngClass]="reassignScreenshotFile ? 'border-green-300 bg-green-50/50 dark:bg-green-900/10' : 'border-amber-300 bg-amber-50/50 dark:bg-amber-900/10'">
+          <label class="block text-xs font-medium mb-1" [ngClass]="reassignScreenshotFile ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'">
+            SCREENSHOT * <span class="text-[10px]">(upload SS → then reassign)</span>
+          </label>
+          <input type="file" accept="image/*" (change)="onReassignScreenshot($event)"
+            class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+          <div *ngIf="reassignScreenshotFile" class="mt-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <img [src]="reassignScreenshotFile" alt="Screenshot" class="w-full max-h-[120px] object-contain bg-gray-100 dark:bg-gray-800" />
+          </div>
+          <p *ngIf="!reassignScreenshotFile" class="mt-1 text-[10px] text-red-500 font-medium">⚠ Screenshot is mandatory</p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showReassignModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmReassign()" [disabled]="!reassignForm.assignedTo || !reassignScreenshotFile"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50">Reassign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ IMPORT EXCEL MODAL (Admin) ═══════ -->
+  <div *ngIf="showImportModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showImportModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-lg p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Import Boxes from Excel</h2>
+      <p class="text-xs text-gray-500 mb-4">Upload a .csv or .xlsx file with box data. Required columns: <span class="font-mono font-bold">Box ID</span>, <span class="font-mono font-bold">Type</span>. Optional: <span class="font-mono">Location</span>, <span class="font-mono">Notes</span></p>
+
+      <!-- Download Template -->
+      <div class="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-blue-800 dark:text-blue-300">Download Template</p>
+            <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">Use this template to fill in box data</p>
+          </div>
+          <button (click)="downloadImportTemplate()"
+            class="h-[30px] px-3 text-[10px] font-medium text-blue-700 border border-blue-300 rounded-md hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors">
+            Download CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- File Upload -->
+      <div class="p-4 rounded-lg border-2 border-dashed" [ngClass]="importFile ? 'border-green-300 bg-green-50/50' : 'border-gray-300'">
+        <input type="file" accept=".csv,.xlsx,.xls" (change)="onImportFileSelected($event)"
+          class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer" />
+        <p *ngIf="importFile" class="mt-2 text-xs text-green-600 font-medium">✓ {{ importFile.name }} ({{ importFile.size > 1024 ? (importFile.size / 1024 | number:'1.0-0') + ' KB' : importFile.size + ' B' }})</p>
+      </div>
+
+      <!-- Preview -->
+      <div *ngIf="importPreview.length > 0" class="mt-4">
+        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Preview ({{ importPreview.length }} boxes):</p>
+        <div class="max-h-[200px] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0">
+              <tr>
+                <th class="text-left py-1.5 px-2 font-semibold text-gray-500">Box ID</th>
+                <th class="text-left py-1.5 px-2 font-semibold text-gray-500">Type</th>
+                <th class="text-left py-1.5 px-2 font-semibold text-gray-500">Location</th>
+                <th class="text-left py-1.5 px-2 font-semibold text-gray-500">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of importPreview; let i = index" class="border-t border-gray-100 dark:border-gray-800" [ngClass]="i % 2 === 0 ? '' : 'bg-gray-50/50 dark:bg-gray-800/30'">
+                <td class="py-1.5 px-2 font-mono font-bold">{{ row.uniqueId }}</td>
+                <td class="py-1.5 px-2">{{ row.boxType }}</td>
+                <td class="py-1.5 px-2 text-gray-500">{{ row.location || '—' }}</td>
+                <td class="py-1.5 px-2 text-gray-500 truncate max-w-[100px]">{{ row.notes || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <p *ngIf="importError" class="mt-3 text-xs text-red-500 font-medium">{{ importError }}</p>
+
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button (click)="showImportModal = false; importPreview = []; importFile = null; importError = ''"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmImport()" [disabled]="importPreview.length === 0"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50">
+          Import {{ importPreview.length }} Boxes
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

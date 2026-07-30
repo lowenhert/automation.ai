@@ -1,0 +1,328 @@
+<div class="space-y-5">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-lg font-bold text-gray-800 dark:text-white tracking-wide">Doc Center</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Organize documents in folders — upload, download & share</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button (click)="openNewFolder()"
+        class="h-[36px] px-4 text-sm font-medium text-[#465FFF] border border-[#465FFF]/30 hover:bg-[#465FFF]/5 rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        New Folder
+      </button>
+      <button (click)="openUpload()"
+        class="h-[36px] px-5 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Upload
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Breadcrumb + Search + View Toggle ───────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-3 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center gap-3">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-1 flex-1 overflow-x-auto">
+      <button *ngIf="currentFolderId !== null" (click)="goUp()"
+        class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <ng-container *ngFor="let crumb of breadcrumb; let last = last">
+        <button (click)="navigateTo(crumb)"
+          class="text-xs font-medium whitespace-nowrap px-1.5 py-0.5 rounded transition-colors"
+          [ngClass]="last ? 'text-gray-800 dark:text-white font-bold' : 'text-gray-400 hover:text-gray-600'">
+          {{ crumb.name }}
+        </button>
+        <span *ngIf="!last" class="text-gray-300 text-xs">/</span>
+      </ng-container>
+    </div>
+    <!-- Search -->
+    <div class="relative w-full md:w-[250px]">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="onSearch()" placeholder="Search files & folders..."
+        class="w-full text-sm h-[34px] pl-9 pr-8 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+      <button *ngIf="searchQuery" (click)="clearSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <!-- View Toggle -->
+    <div class="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <button (click)="viewMode = 'grid'" class="w-8 h-8 flex items-center justify-center transition-colors"
+        [ngClass]="viewMode === 'grid' ? 'bg-[#465FFF] text-white' : 'text-gray-400 hover:text-gray-700'">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+      </button>
+      <button (click)="viewMode = 'list'" class="w-8 h-8 flex items-center justify-center transition-colors"
+        [ngClass]="viewMode === 'list' ? 'bg-[#465FFF] text-white' : 'text-gray-400 hover:text-gray-700'">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Content Area ────────────────────────────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] min-h-[400px]">
+
+    <!-- Search Results -->
+    <div *ngIf="isSearching" class="p-5">
+      <p class="text-xs text-gray-400 mb-3 font-medium">Search results for "{{ searchQuery }}" ({{ searchResults.length }} found)</p>
+      <div *ngIf="searchResults.length === 0" class="py-12 text-center text-gray-400 text-sm">
+        No files or folders match your search.
+      </div>
+      <!-- Search results grid -->
+      <div *ngIf="searchResults.length > 0" class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div *ngFor="let item of searchResults"
+          class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md hover:border-[#465FFF]/30 transition-all cursor-pointer group relative"
+          (dblclick)="item.type === 'folder' ? openFolder($any(item)) : openPreview($any(item))">
+          <div class="text-center">
+            <div *ngIf="item.type === 'folder'" class="text-4xl mb-2">📁</div>
+            <div *ngIf="item.type === 'file'" class="text-4xl mb-2">{{ getFileIcon($any(item).mimeType) }}</div>
+            <p class="text-xs font-medium text-gray-800 dark:text-white truncate">{{ item.name }}</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">{{ item.type === 'file' ? formatSize($any(item).size) : getItemCount($any(item)) + ' items' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Normal folder view -->
+    <div *ngIf="!isSearching" class="p-5">
+      <!-- Empty state -->
+      <div *ngIf="items.length === 0" class="py-16 text-center">
+        <div class="text-5xl mb-3">📂</div>
+        <p class="text-sm text-gray-400">This folder is empty</p>
+        <p class="text-xs text-gray-300 mt-1">Create a folder or upload files to get started</p>
+      </div>
+
+      <!-- Grid View -->
+      <div *ngIf="items.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div *ngFor="let item of items"
+          class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md hover:border-[#465FFF]/30 transition-all cursor-pointer group relative"
+          (dblclick)="item.type === 'folder' ? openFolder($any(item)) : openPreview($any(item))">
+          <!-- Context menu -->
+          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center gap-0.5">
+              <button *ngIf="item.type === 'file'" (click)="downloadFile($any(item)); $event.stopPropagation()" title="Download"
+                class="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              </button>
+              <button (click)="openRename(item); $event.stopPropagation()" title="Rename"
+                class="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+              <button (click)="openMove(item); $event.stopPropagation()" title="Move"
+                class="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+              </button>
+              <button (click)="deleteItem(item); $event.stopPropagation()" title="Delete"
+                class="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+          <!-- Icon & Name -->
+          <div class="text-center pt-2">
+            <div *ngIf="item.type === 'folder'" class="text-4xl mb-2" (click)="openFolder($any(item))">📁</div>
+            <div *ngIf="item.type === 'file'" class="text-4xl mb-2">{{ getFileIcon($any(item).mimeType) }}</div>
+            <p class="text-xs font-medium text-gray-800 dark:text-white truncate" title="{{ item.name }}">{{ item.name }}</p>
+            <p *ngIf="item.type === 'file'" class="text-[10px] text-gray-400 mt-0.5">{{ formatSize($any(item).size) }}</p>
+            <p *ngIf="item.type === 'folder'" class="text-[10px] text-gray-400 mt-0.5">{{ getItemCount($any(item)) }} items</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- List View -->
+      <div *ngIf="items.length > 0 && viewMode === 'list'" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-[10px] uppercase text-gray-400 font-semibold tracking-wider border-b border-gray-100 dark:border-gray-800">
+              <th class="text-left py-2 px-3">Name</th>
+              <th class="text-left py-2 px-3">Type</th>
+              <th class="text-left py-2 px-3">Size</th>
+              <th class="text-left py-2 px-3">Uploaded By</th>
+              <th class="text-left py-2 px-3">Date</th>
+              <th class="text-right py-2 px-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of items" class="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer"
+              (dblclick)="item.type === 'folder' ? openFolder($any(item)) : openPreview($any(item))">
+              <td class="py-2.5 px-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">{{ item.type === 'folder' ? '📁' : getFileIcon($any(item).mimeType) }}</span>
+                  <span class="font-medium text-gray-800 dark:text-white truncate max-w-[200px]">{{ item.name }}</span>
+                </div>
+              </td>
+              <td class="py-2.5 px-3 text-xs text-gray-500">{{ item.type === 'folder' ? 'Folder' : $any(item).mimeType.split('/')[1] }}</td>
+              <td class="py-2.5 px-3 text-xs text-gray-500">{{ item.type === 'file' ? formatSize($any(item).size) : getItemCount($any(item)) + ' items' }}</td>
+              <td class="py-2.5 px-3 text-xs text-gray-500">{{ item.type === 'file' ? $any(item).uploadedBy : $any(item).createdBy }}</td>
+              <td class="py-2.5 px-3 text-xs text-gray-500">{{ (item.type === 'file' ? $any(item).uploadedAt : $any(item).createdAt) | date:'mediumDate' }}</td>
+              <td class="py-2.5 px-3 text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <button *ngIf="item.type === 'file'" (click)="downloadFile($any(item)); $event.stopPropagation()"
+                    class="h-[26px] px-2 text-[10px] text-blue-500 hover:text-blue-700 transition-colors" title="Download">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  </button>
+                  <button (click)="openRename(item); $event.stopPropagation()"
+                    class="h-[26px] px-2 text-[10px] text-amber-500 hover:text-amber-700 transition-colors" title="Rename">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                  </button>
+                  <button (click)="openMove(item); $event.stopPropagation()"
+                    class="h-[26px] px-2 text-[10px] text-purple-500 hover:text-purple-700 transition-colors" title="Move">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                  </button>
+                  <button (click)="deleteItem(item); $event.stopPropagation()"
+                    class="h-[26px] px-2 text-[10px] text-red-400 hover:text-red-600 transition-colors" title="Delete">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ NEW FOLDER MODAL ═══════ -->
+  <div *ngIf="showNewFolderModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showNewFolderModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">New Folder</h2>
+      <input type="text" [(ngModel)]="newFolderName" placeholder="Folder name" (keyup.enter)="confirmNewFolder()"
+        class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" autofocus />
+      <div class="flex items-center justify-end gap-3 mt-5">
+        <button (click)="showNewFolderModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmNewFolder()" [disabled]="!newFolderName.trim()"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ UPLOAD MODAL ═══════ -->
+  <div *ngIf="showUploadModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showUploadModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Upload Files</h2>
+      <p class="text-xs text-gray-500 mb-3">Upload to: <span class="font-bold">{{ breadcrumb[breadcrumb.length - 1]?.name }}</span></p>
+
+      <div class="p-4 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-center">
+        <input type="file" multiple (change)="onFilesSelected($event)"
+          class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+        <p class="text-[10px] text-gray-400 mt-2">Max 50MB per file • Multiple files allowed</p>
+      </div>
+
+      <!-- Selected files list -->
+      <div *ngIf="uploadFiles.length > 0" class="mt-4 max-h-[200px] overflow-y-auto space-y-2">
+        <div *ngFor="let f of uploadFiles; let i = index"
+          class="flex items-center justify-between p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-lg">{{ getFileIcon(f.mimeType) }}</span>
+            <div class="min-w-0">
+              <p class="text-xs font-medium text-gray-800 dark:text-white truncate">{{ f.name }}</p>
+              <p class="text-[10px] text-gray-400">{{ formatSize(f.size) }}</p>
+            </div>
+          </div>
+          <button (click)="removeUploadFile(i)" class="text-red-400 hover:text-red-600 ml-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-5">
+        <button (click)="showUploadModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmUpload()" [disabled]="uploadFiles.length === 0"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">
+          Upload {{ uploadFiles.length }} file{{ uploadFiles.length > 1 ? 's' : '' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ RENAME MODAL ═══════ -->
+  <div *ngIf="showRenameModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showRenameModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Rename</h2>
+      <input type="text" [(ngModel)]="renameValue" (keyup.enter)="confirmRename()"
+        class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+      <div class="flex items-center justify-end gap-3 mt-5">
+        <button (click)="showRenameModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmRename()" [disabled]="!renameValue.trim()"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-50">Rename</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ MOVE MODAL ═══════ -->
+  <div *ngIf="showMoveModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showMoveModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Move "{{ selectedItem?.name }}"</h2>
+      <p class="text-xs text-gray-500 mb-4">Select destination folder</p>
+      <div class="max-h-[250px] overflow-y-auto space-y-1">
+        <button (click)="moveTarget = null"
+          class="w-full text-left px-3 py-2 text-xs rounded-lg transition-colors flex items-center gap-2"
+          [ngClass]="moveTarget === null ? 'bg-[#465FFF]/10 text-[#465FFF] font-bold' : 'text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'">
+          📁 Root
+        </button>
+        <button *ngFor="let folder of moveFolders" (click)="moveTarget = folder.id"
+          class="w-full text-left px-3 py-2 text-xs rounded-lg transition-colors flex items-center gap-2"
+          [ngClass]="moveTarget === folder.id ? 'bg-[#465FFF]/10 text-[#465FFF] font-bold' : 'text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'">
+          📁 {{ folder.name }}
+        </button>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-5">
+        <button (click)="showMoveModal = false"
+          class="h-[36px] px-4 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+        <button (click)="confirmMove()"
+          class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors">Move Here</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ FILE PREVIEW MODAL ═══════ -->
+  <div *ngIf="showPreviewModal && previewFile" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+    <div (click)="showPreviewModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-gray-800 dark:text-white">{{ previewFile.name }}</h2>
+          <p class="text-xs text-gray-500">{{ formatSize(previewFile.size) }} • Uploaded by {{ previewFile.uploadedBy }} • {{ previewFile.uploadedAt | date:'medium' }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button (click)="downloadFile(previewFile)"
+            class="h-[32px] px-3 text-xs font-medium text-[#465FFF] border border-[#465FFF]/30 rounded-lg hover:bg-[#465FFF]/5 transition-colors flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download
+          </button>
+          <button (click)="showPreviewModal = false"
+            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- Image preview -->
+      <div *ngIf="previewFile.mimeType.startsWith('image/')" class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+        <img [src]="previewFile.data" [alt]="previewFile.name" class="w-full max-h-[500px] object-contain" />
+      </div>
+      <!-- PDF preview -->
+      <div *ngIf="previewFile.mimeType === 'application/pdf'" class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+        <iframe [src]="previewFile.data" class="w-full h-[500px]"></iframe>
+      </div>
+      <!-- No preview -->
+      <div *ngIf="!isPreviewable(previewFile)" class="py-12 text-center rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="text-5xl mb-3">{{ getFileIcon(previewFile.mimeType) }}</div>
+        <p class="text-sm text-gray-500">Preview not available for this file type</p>
+        <button (click)="downloadFile(previewFile)"
+          class="mt-3 h-[32px] px-4 text-xs font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors">
+          Download File
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

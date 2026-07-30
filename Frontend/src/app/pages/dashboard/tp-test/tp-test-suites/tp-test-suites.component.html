@@ -129,15 +129,15 @@
       </div>
     </div>
 
-    <!-- Section Tree + Cases (right panel) -->
-    <div class="flex-1 min-w-0">
+    <!-- Right panel: Tree View -->
+    <div class="flex-1 min-w-0 space-y-4">
       <div *ngIf="!activeSuite" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-10 text-center">
         <p class="text-gray-400">Select a suite to view sections and cases.</p>
       </div>
 
-      <div *ngIf="activeSuite" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
-        <!-- Suite header -->
-        <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+      <ng-container *ngIf="activeSuite">
+        <!-- Panel header -->
+        <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] px-5 py-3 flex items-center justify-between">
           <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">{{ activeSuite.name }}</h2>
           <button *ngIf="isAdminUser" (click)="openCreateSection(null)"
             class="h-[30px] px-3 text-xs font-medium text-[#465FFF] border border-[#465FFF]/30 rounded-lg hover:bg-[#465FFF]/5 transition-colors flex items-center gap-1">
@@ -148,97 +148,132 @@
           </button>
         </div>
 
-        <!-- Loading sections -->
-        <div *ngIf="sectionsLoading" class="p-8 text-center">
-          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+        <!-- Loading -->
+        <div *ngIf="sectionsLoading" class="flex justify-center py-10">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
         </div>
 
         <!-- Sections Tree -->
-        <div *ngIf="!sectionsLoading" class="divide-y divide-gray-50 dark:divide-gray-800">
-          <!-- Empty state -->
-          <div *ngIf="getRootSections().length === 0 && cases.length === 0" class="p-8 text-center text-gray-400 text-sm">
-            No sections or cases. Add a section to get started.
+        <div *ngIf="!sectionsLoading" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+          <div *ngIf="getRootSections().length === 0" class="p-8 text-center text-gray-400 text-sm">
+            No sections yet. Add a section to get started.
           </div>
 
-          <!-- Render root sections -->
-          <ng-container *ngFor="let section of getRootSections()">
-            <div class="px-5 py-2.5">
-              <!-- Section header -->
-              <div class="flex items-center gap-2 cursor-pointer group" (click)="toggleSection(section.id!)">
-                <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-90]="expandedSections.has(section.id!)"
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <!-- Root Sections -->
+          <div *ngFor="let section of getRootSections(); let i = index" class="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+            <!-- Section Header -->
+            <div (click)="toggleSection(section.id!)"
+              class="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-90]="expandedSections.has(section.id!)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
-                <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-                </svg>
-                <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ section.name }}</span>
-                <span class="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded-full">{{ getCasesForSection(section.id!).length }}</span>
-                <div class="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button *ngIf="isAdminUser" (click)="openCreateCase(section.id!); $event.stopPropagation()" title="Add Case"
-                    class="p-1 rounded text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                  </button>
-                  <button *ngIf="isAdminUser" (click)="openCreateSection(section.id!); $event.stopPropagation()" title="Add Sub-Section"
-                    class="p-1 rounded text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                    </svg>
-                  </button>
+                <div class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                  </svg>
                 </div>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ section.name }}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 font-medium">{{ getSectionTotalCases(section.id!) }}</span>
               </div>
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button *ngIf="isAdminUser" (click)="openCreateSection(section.id!); $event.stopPropagation()" title="Add sub-section"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                  </svg>
+                </button>
+                <button *ngIf="isAdminUser" (click)="openCreateCase(section.id!); $event.stopPropagation()" title="Add case"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-              <!-- Cases under this section -->
-              <div *ngIf="expandedSections.has(section.id!)" class="mt-2 ml-8 space-y-1.5">
-                <!-- Child sections -->
-                <div *ngFor="let child of getChildSections(section.id!)" class="pl-2 border-l-2 border-gray-200 dark:border-gray-700 mb-2">
-                  <div class="flex items-center gap-2 py-1">
-                    <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-                    </svg>
-                    <span class="text-xs font-medium text-gray-600 dark:text-gray-300">{{ child.name }}</span>
-                    <button (click)="openCreateCase(child.id!)" class="ml-auto p-0.5 rounded text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <div *ngFor="let tc of getCasesForSection(child.id!)" (click)="openCaseDetail(tc)"
-                    class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 group/case cursor-pointer">
-                    <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    <span class="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">{{ tc.title }}</span>
-                    <span class="text-[9px] px-1.5 py-0.5 rounded font-medium" [ngClass]="getPriorityClass(tc.priority || '')">{{ tc.priority }}</span>
-                    <button *ngIf="isAdminUser" (click)="deleteCase(tc)" class="p-0.5 rounded text-red-400 opacity-0 group-hover/case:opacity-100 transition-opacity">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Cases directly in section -->
-                <div *ngFor="let tc of getCasesForSection(section.id!)" (click)="openCaseDetail(tc)"
-                  class="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 group/case cursor-pointer">
+            <!-- Section Content (expanded) -->
+            <div *ngIf="expandedSections.has(section.id!)" class="bg-gray-50/50 dark:bg-gray-900/30">
+              <!-- Cases for this section -->
+              <div *ngFor="let tc of getCasesForSection(section.id!)"
+                (click)="openCaseDetail(tc)"
+                class="flex items-center justify-between px-4 py-2 pl-14 border-t border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group/case">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
                   <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                   </svg>
-                  <span class="text-xs text-gray-600 dark:text-gray-300 truncate flex-1">{{ tc.title }}</span>
-                  <span class="text-[9px] px-1.5 py-0.5 rounded font-medium" [ngClass]="getPriorityClass(tc.priority || '')">{{ tc.priority }}</span>
-                  <button *ngIf="isAdminUser" (click)="deleteCase(tc)" class="p-0.5 rounded text-red-400 opacity-0 group-hover/case:opacity-100 transition-opacity">
+                  <span class="text-xs text-gray-700 dark:text-gray-300 truncate">{{ tc.title }}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded font-medium flex-shrink-0" [ngClass]="getPriorityClass(tc.priority || '')">{{ tc.priority || 'MEDIUM' }}</span>
+                  <span *ngIf="tc.type" class="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 font-medium flex-shrink-0">{{ tc.type }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span *ngIf="tc.assignedTo" class="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-medium">{{ tc.assignedTo }}</span>
+                  <button *ngIf="isAdminUser" (click)="deleteCase(tc); $event.stopPropagation()"
+                    class="p-1 rounded text-red-400 opacity-0 group-hover/case:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                   </button>
                 </div>
               </div>
+
+              <!-- Child Sections -->
+              <div *ngFor="let child of getChildSections(section.id!)" class="border-t border-gray-100 dark:border-gray-800">
+                <!-- Child Section Header -->
+                <div (click)="toggleSection(child.id!)"
+                  class="flex items-center justify-between px-4 py-2.5 pl-10 cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/50 transition-colors group">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" [class.rotate-90]="expandedSections.has(child.id!)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                    </svg>
+                    <span class="text-xs font-medium text-gray-600 dark:text-gray-300">{{ child.name }}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 font-medium">{{ getCasesForSection(child.id!).length }}</span>
+                  </div>
+                  <button *ngIf="isAdminUser" (click)="openCreateCase(child.id!); $event.stopPropagation()" title="Add case"
+                    class="p-1 rounded text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Child Section Cases -->
+                <div *ngIf="expandedSections.has(child.id!)">
+                  <div *ngFor="let tc of getCasesForSection(child.id!)"
+                    (click)="openCaseDetail(tc)"
+                    class="flex items-center justify-between px-4 py-2 pl-[72px] border-t border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group/case">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                      </svg>
+                      <span class="text-xs text-gray-700 dark:text-gray-300 truncate">{{ tc.title }}</span>
+                      <span class="text-[9px] px-1.5 py-0.5 rounded font-medium flex-shrink-0" [ngClass]="getPriorityClass(tc.priority || '')">{{ tc.priority || 'MEDIUM' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span *ngIf="tc.assignedTo" class="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-medium">{{ tc.assignedTo }}</span>
+                      <button *ngIf="isAdminUser" (click)="deleteCase(tc); $event.stopPropagation()"
+                        class="p-1 rounded text-red-400 opacity-0 group-hover/case:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Empty state for section -->
+              <div *ngIf="getCasesForSection(section.id!).length === 0 && getChildSections(section.id!).length === 0"
+                class="px-4 py-3 pl-14 text-xs text-gray-400 border-t border-gray-100 dark:border-gray-800">
+                No cases or sub-sections yet.
+              </div>
             </div>
-          </ng-container>
+          </div>
         </div>
-      </div>
+      </ng-container>
     </div>
   </div>
 

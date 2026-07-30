@@ -30,6 +30,8 @@ import { TpTestProjectsComponent } from './pages/dashboard/tp-test/tp-test-proje
 import { TpTestSuitesComponent } from './pages/dashboard/tp-test/tp-test-suites/tp-test-suites.component';
 import { TpTestRunsComponent } from './pages/dashboard/tp-test/tp-test-runs/tp-test-runs.component';
 import { AboutComponent } from './pages/about/about.component';
+import { InventoryManagementComponent } from './pages/inventory-management/inventory-management.component';
+import { DocCenterComponent } from './pages/doc-center/doc-center.component';
 import { authGuard, guestGuard } from './shared/guards/auth.guard';
 import { AdminGuard } from './shared/guards/admin.guard';
 
@@ -114,6 +116,16 @@ export const routes: Routes = [
         path:'about',
         component:AboutComponent,
         title:'About | Test Lab Framework'
+      },
+      {
+        path:'inventory',
+        component:InventoryManagementComponent,
+        title:'Inventory Management | Tata Play Dashboard'
+      },
+      {
+        path:'doc-center',
+        component:DocCenterComponent,
+        title:'Doc Center | Tata Play Dashboard'
       },
       {
         path:'form-elements',

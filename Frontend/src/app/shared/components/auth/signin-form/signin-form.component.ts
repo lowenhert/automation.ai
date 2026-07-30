@@ -31,7 +31,7 @@ export class SigninFormComponent {
   isChecked = false;
   isLoading = false;
 
-  email = '';
+  username = '';
   password = '';
 
   togglePasswordVisibility() {
@@ -39,17 +39,17 @@ export class SigninFormComponent {
   }
 
   onSignIn() {
-    if (!this.email || !this.password) {
+    if (!this.username || !this.password) {
       this.notificationService.showWarning(
         'Validation Error',
-        'Please enter both email and password to continue.'
+        'Please enter both username and password to continue.'
       );
       return;
     }
 
     this.isLoading = true;
 
-    this.authService.login(this.email, this.password).subscribe({
+    this.authService.login(this.username, this.password).subscribe({
       next: (response) => {
         console.log('Login successful:', response);
         // Navigation and success notification are now handled by AuthService

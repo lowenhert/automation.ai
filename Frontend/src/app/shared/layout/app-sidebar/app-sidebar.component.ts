@@ -59,6 +59,16 @@ export class AppSidebarComponent {
         { name: "Test Runs", path: "/tp-test/runs" }
       ],
     },
+    // {
+    //   icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm2 0h14v14H5V5zm2 2h2v2H7V7zm4 0h6v2h-6V7zm-4 4h2v2H7v-2zm4 0h6v2h-6v-2zm-4 4h2v2H7v-2zm4 0h6v2h-6v-2z" fill="currentColor"/></svg>`,
+    //   name: "Inventory",
+    //   path: "/inventory",
+    // },
+    {
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2H4zm0 2h5.172l2 2H20v10H4V6zm2 4h4v2H6v-2zm0 4h8v2H6v-2z" fill="currentColor"/></svg>`,
+      name: "Doc Center",
+      path: "/doc-center",
+    },
   ];
   // Others nav items
   othersItems: NavItem[] = [

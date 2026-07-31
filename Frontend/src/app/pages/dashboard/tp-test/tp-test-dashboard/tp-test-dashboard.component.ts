@@ -113,8 +113,40 @@ export class TpTestDashboardComponent implements OnInit {
         error: () => { this.isLoading = false; }
       });
     } else if (this.currentUserFullName) {
+      // Load runs assigned to user at run-level
       this.tpService.getRunsByAssignedTo(this.currentUserFullName).subscribe({
-        next: (runs) => { this.allRuns = runs; this.computeRunStats(); this.buildCharts(); this.isLoading = false; },
+        next: (assignedRuns) => {
+          // Also load all runs to find ones where user has cases assigned
+          this.tpService.getAllRuns().subscribe({
+            next: (allRuns) => {
+              const assignedRunIds = new Set(assignedRuns.map(r => r.id));
+              const otherRuns = allRuns.filter(r => !assignedRunIds.has(r.id));
+              let pending = otherRuns.length;
+              if (pending === 0) {
+                this.allRuns = assignedRuns;
+                this.computeRunStats(); this.buildCharts(); this.isLoading = false;
+                return;
+              }
+              const additionalRuns: typeof assignedRuns = [];
+              for (const run of otherRuns) {
+                this.tpService.getRunCases(run.id!).subscribe({
+                  next: (cases) => {
+                    if (cases.some(c => c.assignedTo === this.currentUserFullName)) {
+                      additionalRuns.push(run);
+                    }
+                    pending--;
+                    if (pending === 0) {
+                      this.allRuns = [...assignedRuns, ...additionalRuns];
+                      this.computeRunStats(); this.buildCharts(); this.isLoading = false;
+                    }
+                  },
+                  error: () => { pending--; if (pending === 0) { this.allRuns = [...assignedRuns, ...additionalRuns]; this.computeRunStats(); this.buildCharts(); this.isLoading = false; } }
+                });
+              }
+            },
+            error: () => { this.allRuns = assignedRuns; this.computeRunStats(); this.buildCharts(); this.isLoading = false; }
+          });
+        },
         error: () => { this.isLoading = false; }
       });
     } else {

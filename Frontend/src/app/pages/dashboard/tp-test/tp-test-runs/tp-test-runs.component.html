@@ -207,6 +207,9 @@
               <span *ngIf="run.stbBoxName" class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 font-medium">📦 {{ run.stbBoxName }}</span>
             </div>
             <div class="flex items-center gap-2">
+              <span *ngIf="run.startDate" class="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 font-medium">
+                🗓 {{ run.startDate | date:'MMM d' }}
+              </span>
               <span *ngIf="run.deadline" class="text-[10px] px-2 py-0.5 rounded-full font-medium" [ngClass]="getDeadlineClass(run)">
                 📅 {{ run.deadline | date:'MMM d' }}
               </span>
@@ -300,6 +303,7 @@
         [ngClass]="detailTab === 'timeline' ? 'border-[#465FFF] text-[#465FFF]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'">
         By Assignee
       </button>
+
     </div>
 
     <div *ngIf="detailLoading" class="flex justify-center py-12">
@@ -512,6 +516,196 @@
       </div>
     </ng-container>
 
+    <!-- History tab removed — use dedicated TestRun Insights page -->
+    <ng-container *ngIf="false">
+
+      <!-- Sub-tabs -->
+      <div class="flex items-center gap-2 mb-4">
+        <button (click)="onHistoryTabChange('comparison')"
+          class="text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+          [ngClass]="historyTab === 'comparison' ? 'bg-[#465FFF] text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200'">
+          📊 Run Comparison
+        </button>
+        <button (click)="onHistoryTabChange('userFailures')"
+          class="text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+          [ngClass]="historyTab === 'userFailures' ? 'bg-[#465FFF] text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200'">
+          👤 User Failure Analysis
+        </button>
+        <button (click)="onHistoryTabChange('caseHistory')"
+          class="text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+          [ngClass]="historyTab === 'caseHistory' ? 'bg-[#465FFF] text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200'">
+          📋 Test Case History
+        </button>
+      </div>
+
+      <!-- ── Run Comparison ──────────────────────────────────────── -->
+      <ng-container *ngIf="historyTab === 'comparison'">
+        <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5">
+          <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Compare Test Runs (select 2–4 runs)</h3>
+          <div class="flex flex-wrap gap-2 mb-4">
+            <button *ngFor="let run of runs" (click)="toggleComparisonRun(run.id!)"
+              class="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+              [ngClass]="comparisonRunIds.includes(run.id!)
+                ? 'border-[#465FFF] bg-[#465FFF]/10 text-[#465FFF]'
+                : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'">
+              {{ run.name }}
+            </button>
+          </div>
+
+          <div *ngIf="comparisonLoading" class="flex justify-center py-8">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+          </div>
+
+          <div *ngIf="!comparisonLoading && comparisonData.length >= 2" class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.02]">
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase sticky left-0 bg-gray-50 dark:bg-gray-900">Test Case</th>
+                  <th *ngFor="let d of comparisonData" class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase min-w-[120px]">
+                    {{ d.runName }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let title of getComparisonCaseTitles()" class="border-b border-gray-50 dark:border-gray-700/50">
+                  <td class="px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-900 max-w-[200px] truncate">{{ title }}</td>
+                  <td *ngFor="let d of comparisonData" class="px-4 py-2.5 text-center">
+                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" [ngClass]="getStatusClass(getComparisonStatus(d, title))">
+                      <span class="w-1.5 h-1.5 rounded-full" [ngClass]="getStatusDotClass(getComparisonStatus(d, title))"></span>
+                      {{ getComparisonStatus(d, title) }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div *ngIf="!comparisonLoading && comparisonData.length < 2" class="py-8 text-center text-xs text-gray-400">
+            Select at least 2 runs above to compare their results side-by-side.
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ── User Failure Analysis ───────────────────────────────── -->
+      <ng-container *ngIf="historyTab === 'userFailures'">
+        <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+          <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200">User Failure Analysis</h3>
+            <p class="text-[11px] text-gray-400 mt-0.5">Shows which users have the most failed/blocked test cases across all runs</p>
+          </div>
+
+          <div *ngIf="userFailureData.length === 0" class="p-8 text-center">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+            <p class="text-xs text-gray-400 mt-2">Loading failure data...</p>
+          </div>
+
+          <div *ngIf="userFailureData.length > 0" class="divide-y divide-gray-100 dark:divide-gray-800">
+            <div *ngFor="let userData of userFailureData" class="p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center flex-shrink-0">
+                    <span class="text-white text-xs font-bold">{{ userData.user === 'Unassigned' ? '?' : userData.user.charAt(0).toUpperCase() }}</span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-800 dark:text-white">{{ userData.user }}</p>
+                    <p class="text-[10px] text-red-500 font-medium">{{ userData.failedCases.length }} failure{{ userData.failedCases.length !== 1 ? 's' : '' }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 font-bold">
+                    {{ countByStatus(userData.failedCases, 'FAILED') }} Failed
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 font-bold">
+                    {{ countByStatus(userData.failedCases, 'BLOCKED') }} Blocked
+                  </span>
+                </div>
+              </div>
+              <!-- Failure details -->
+              <div class="ml-12 space-y-1 max-h-[160px] overflow-y-auto">
+                <div *ngFor="let f of userData.failedCases" class="flex items-center gap-2 text-xs py-1">
+                  <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" [ngClass]="f.status === 'FAILED' ? 'bg-red-500' : 'bg-purple-500'"></span>
+                  <span class="text-gray-700 dark:text-gray-300 truncate flex-1">{{ f.title }}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 flex-shrink-0">{{ f.runName }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ── Test Case History ────────────────────────────────────── -->
+      <ng-container *ngIf="historyTab === 'caseHistory'">
+        <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+          <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex flex-col md:flex-row md:items-center gap-3">
+            <div class="flex-1">
+              <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200">Test Case History Across Runs</h3>
+              <p class="text-[11px] text-gray-400 mt-0.5">Track how each test case performed across different runs</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <!-- Search -->
+              <div class="relative">
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" [(ngModel)]="caseHistorySearch" placeholder="Search case..."
+                  class="text-xs h-[32px] pl-8 pr-3 w-[180px] border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none" />
+              </div>
+              <!-- Status Filter -->
+              <select [(ngModel)]="caseHistoryFilter"
+                class="text-xs h-[32px] px-2 pr-6 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+                <option value="">All Status</option>
+                <option value="PASSED">Passed</option>
+                <option value="FAILED">Failed</option>
+                <option value="BLOCKED">Blocked</option>
+                <option value="UNTESTED">Untested</option>
+              </select>
+            </div>
+          </div>
+
+          <div *ngIf="caseHistoryData.length === 0" class="p-8 text-center">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+            <p class="text-xs text-gray-400 mt-2">Loading case history...</p>
+          </div>
+
+          <div *ngIf="caseHistoryData.length > 0" class="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 z-10">
+                <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Test Case</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Runs</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Pass Rate</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Run History</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of filteredCaseHistory" class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                  <td class="px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 max-w-[220px] truncate" [title]="item.caseTitle">{{ item.caseTitle }}</td>
+                  <td class="px-4 py-2.5 text-center text-xs text-gray-500">{{ item.results.length }}</td>
+                  <td class="px-4 py-2.5 text-center">
+                    <span class="text-xs font-bold" [ngClass]="getCasePassRate(item) >= 80 ? 'text-green-600' : getCasePassRate(item) >= 50 ? 'text-amber-600' : 'text-red-600'">
+                      {{ getCasePassRate(item) }}%
+                    </span>
+                  </td>
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <span *ngFor="let r of item.results" class="text-[9px] font-bold px-1.5 py-0.5 rounded" [ngClass]="getStatusClass(r.status)" [title]="r.runName + ' - ' + r.executedBy">
+                        {{ r.status.charAt(0) }}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div *ngIf="caseHistoryData.length > 0 && filteredCaseHistory.length === 0" class="py-6 text-center text-xs text-gray-400">
+            No cases match the current filters.
+          </div>
+        </div>
+      </ng-container>
+
+    </ng-container>
+
   </ng-container>
 
   <!-- ════════════════════════════════════════════════════════════════ -->
@@ -695,10 +889,27 @@
             </select>
           </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">DEADLINE</label>
-          <input type="date" [(ngModel)]="newRun.deadline"
-            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">START DATE</label>
+            <app-date-picker
+              id="startDate"
+              mode="single"
+              [defaultDate]="newRun.startDate"
+              placeholder="Select start date"
+              (dateChange)="newRun.startDate = $event.dateStr">
+            </app-date-picker>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">DEADLINE</label>
+            <app-date-picker
+              id="deadline"
+              mode="single"
+              [defaultDate]="newRun.deadline"
+              placeholder="Select deadline"
+              (dateChange)="newRun.deadline = $event.dateStr">
+            </app-date-picker>
+          </div>
         </div>
       </div>
       <div class="flex items-center justify-end gap-3 mt-6">

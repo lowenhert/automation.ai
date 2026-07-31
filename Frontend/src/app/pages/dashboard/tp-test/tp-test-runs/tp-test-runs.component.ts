@@ -6,6 +6,7 @@ import { TpTestService, TpProject, TpTestRun, TpRunCase, TpSuite } from '../../.
 import { UserManagementService } from '../../../../shared/services/user-management.service';
 import { AuthService, UserProfile } from '../../../../shared/services/auth.service';
 import { StbService, STBBox } from '../../../../shared/services/stb.service';
+import { DatePickerComponent } from '../../../../shared/components/form/date-picker/date-picker.component';
 import {
   NgApexchartsModule,
   ApexNonAxisChartSeries,
@@ -26,7 +27,7 @@ import {
 @Component({
   selector: 'app-tp-test-runs',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgApexchartsModule],
+  imports: [CommonModule, FormsModule, NgApexchartsModule, DatePickerComponent],
   templateUrl: './tp-test-runs.component.html'
 })
 export class TpTestRunsComponent implements OnInit {
@@ -56,7 +57,7 @@ export class TpTestRunsComponent implements OnInit {
   // Create run
   showCreateRunModal = false;
   suites: TpSuite[] = [];
-  newRun: { name: string; projectId: number; suiteId: number; assignedTo: string; deadline: string; testType: string; stbBoxName: string } = { name: '', projectId: 0, suiteId: 0, assignedTo: '', deadline: '', testType: '', stbBoxName: '' };
+  newRun: { name: string; projectId: number; suiteId: number; assignedTo: string; startDate: string; deadline: string; testType: string; stbBoxName: string } = { name: '', projectId: 0, suiteId: 0, assignedTo: '', startDate: '', deadline: '', testType: '', stbBoxName: '' };
   creating = false;
 
   // Execution view
@@ -72,8 +73,18 @@ export class TpTestRunsComponent implements OnInit {
   showDetailRun: TpTestRun | null = null;
   detailRunCases: TpRunCase[] = [];
   detailLoading = false;
-  detailTab: 'overview' | 'cases' | 'timeline' = 'overview';
+  detailTab: 'overview' | 'cases' | 'timeline' | 'history' = 'overview';
   caseFilterStatus = '';
+
+  // History & Comparison
+  historyTab: 'comparison' | 'userFailures' | 'caseHistory' = 'comparison';
+  comparisonRunIds: number[] = [];
+  comparisonData: { runName: string; runId: number; cases: TpRunCase[] }[] = [];
+  comparisonLoading = false;
+  userFailureData: { user: string; failedCases: { title: string; runName: string; status: string }[] }[] = [];
+  caseHistoryData: { caseTitle: string; results: { runName: string; status: string; executedBy: string; executedAt: string }[] }[] = [];
+  caseHistoryFilter = '';
+  caseHistorySearch = '';
 
   // Analytics charts
   donutSeries: ApexNonAxisChartSeries = [];
@@ -146,14 +157,47 @@ export class TpTestRunsComponent implements OnInit {
     this.isLoading = true;
     this.tpService.getRunsByProject(this.selectedProjectId).subscribe({
       next: (data) => {
-        // Filter: admin sees all, user sees only their assigned runs
+        // Admin sees all runs; non-admin sees runs assigned to them OR runs with cases assigned to them
         if (!this.isAdminUser && this.currentUserFullName) {
-          this.runs = data.filter(r => r.assignedTo === this.currentUserFullName);
+          const matchedByRunAssignment = data.filter(r => r.assignedTo === this.currentUserFullName);
+          const otherRuns = data.filter(r => r.assignedTo !== this.currentUserFullName);
+          // Check each remaining run for cases assigned to this user
+          let pending = otherRuns.length;
+          if (pending === 0) {
+            this.runs = matchedByRunAssignment;
+            this.isLoading = false;
+            this.buildCharts();
+            return;
+          }
+          const additionalRuns: TpTestRun[] = [];
+          for (const run of otherRuns) {
+            this.tpService.getRunCases(run.id!).subscribe({
+              next: (cases) => {
+                if (cases.some(c => c.assignedTo === this.currentUserFullName)) {
+                  additionalRuns.push(run);
+                }
+                pending--;
+                if (pending === 0) {
+                  this.runs = [...matchedByRunAssignment, ...additionalRuns];
+                  this.isLoading = false;
+                  this.buildCharts();
+                }
+              },
+              error: () => {
+                pending--;
+                if (pending === 0) {
+                  this.runs = [...matchedByRunAssignment, ...additionalRuns];
+                  this.isLoading = false;
+                  this.buildCharts();
+                }
+              }
+            });
+          }
         } else {
           this.runs = data;
+          this.isLoading = false;
+          this.buildCharts();
         }
-        this.isLoading = false;
-        this.buildCharts();
       },
       error: () => { this.error = 'Failed to load runs.'; this.isLoading = false; }
     });
@@ -294,7 +338,8 @@ export class TpTestRunsComponent implements OnInit {
   getAssigneeStats(): { name: string; total: number; passed: number; failed: number; blocked: number; untested: number }[] {
     const map: Record<string, { total: number; passed: number; failed: number; blocked: number; untested: number }> = {};
     for (const c of this.detailRunCases) {
-      const assignee = c.assignedTo || 'Unassigned';
+      // Use case-level assignee, fallback to run-level assignee
+      const assignee = c.assignedTo || this.showDetailRun?.assignedTo || 'Unassigned';
       if (!map[assignee]) map[assignee] = { total: 0, passed: 0, failed: 0, blocked: 0, untested: 0 };
       map[assignee].total++;
       if (c.latestStatus === 'PASSED') map[assignee].passed++;
@@ -308,7 +353,7 @@ export class TpTestRunsComponent implements OnInit {
   // ─── Create Run ──────────────────────────────────────────────────────
   openCreateRun(): void {
     if (!this.selectedProjectId) return;
-    this.newRun = { name: '', projectId: this.selectedProjectId, suiteId: 0, assignedTo: '', deadline: '', testType: '', stbBoxName: '' };
+    this.newRun = { name: '', projectId: this.selectedProjectId, suiteId: 0, assignedTo: '', startDate: '', deadline: '', testType: '', stbBoxName: '' };
     this.tpService.getSuites(this.selectedProjectId).subscribe({
       next: (data) => { this.suites = data; this.showCreateRunModal = true; }
     });
@@ -323,6 +368,7 @@ export class TpTestRunsComponent implements OnInit {
       projectId: this.newRun.projectId,
       suiteId: this.newRun.suiteId,
       assignedTo: this.newRun.assignedTo || null,
+      startDate: this.newRun.startDate || null,
       deadline: this.newRun.deadline || null,
       testType: this.newRun.testType || null,
       stbBoxName: this.newRun.stbBoxName || null
@@ -463,5 +509,149 @@ export class TpTestRunsComponent implements OnInit {
       const days = this.getDaysLeft(r);
       return days >= 0 && days <= 3;
     });
+  }
+
+  // ─── History & Comparison ────────────────────────────────────────────
+
+  loadComparisonData(): void {
+    if (this.comparisonRunIds.length < 2) {
+      this.comparisonData = [];
+      return;
+    }
+    this.comparisonLoading = true;
+    this.comparisonData = [];
+    let loaded = 0;
+    for (const runId of this.comparisonRunIds) {
+      const run = this.runs.find(r => r.id === runId);
+      if (!run) { loaded++; continue; }
+      this.tpService.getRunCases(runId).subscribe({
+        next: (cases) => {
+          this.comparisonData.push({ runName: run.name, runId, cases });
+          loaded++;
+          if (loaded === this.comparisonRunIds.length) {
+            this.comparisonLoading = false;
+          }
+        },
+        error: () => { loaded++; if (loaded === this.comparisonRunIds.length) this.comparisonLoading = false; }
+      });
+    }
+  }
+
+  toggleComparisonRun(runId: number): void {
+    const idx = this.comparisonRunIds.indexOf(runId);
+    if (idx >= 0) {
+      this.comparisonRunIds.splice(idx, 1);
+    } else {
+      if (this.comparisonRunIds.length >= 4) return; // max 4
+      this.comparisonRunIds.push(runId);
+    }
+    this.loadComparisonData();
+  }
+
+  getComparisonCaseTitles(): string[] {
+    const titles = new Set<string>();
+    for (const d of this.comparisonData) {
+      for (const c of d.cases) {
+        if (c.testCaseTitle) titles.add(c.testCaseTitle);
+      }
+    }
+    return Array.from(titles);
+  }
+
+  getComparisonStatus(runData: { cases: TpRunCase[] }, caseTitle: string): string {
+    const c = runData.cases.find(rc => rc.testCaseTitle === caseTitle);
+    return c?.latestStatus || 'UNTESTED';
+  }
+
+  loadUserFailures(): void {
+    const failureMap: Record<string, { title: string; runName: string; status: string }[]> = {};
+    // Gather failures across all runs
+    const processRun = (run: TpTestRun, cases: TpRunCase[]) => {
+      for (const c of cases) {
+        if (c.latestStatus === 'FAILED' || c.latestStatus === 'BLOCKED') {
+          const user = c.assignedTo || run.assignedTo || 'Unassigned';
+          if (!failureMap[user]) failureMap[user] = [];
+          failureMap[user].push({ title: c.testCaseTitle || 'Untitled', runName: run.name, status: c.latestStatus });
+        }
+      }
+    };
+
+    let loaded = 0;
+    this.userFailureData = [];
+    for (const run of this.runs) {
+      this.tpService.getRunCases(run.id!).subscribe({
+        next: (cases) => {
+          processRun(run, cases);
+          loaded++;
+          if (loaded === this.runs.length) {
+            this.userFailureData = Object.entries(failureMap)
+              .map(([user, failedCases]) => ({ user, failedCases }))
+              .sort((a, b) => b.failedCases.length - a.failedCases.length);
+          }
+        },
+        error: () => { loaded++; }
+      });
+    }
+  }
+
+  loadCaseHistory(): void {
+    const historyMap: Record<string, { runName: string; status: string; executedBy: string; executedAt: string }[]> = {};
+    let loaded = 0;
+    this.caseHistoryData = [];
+    for (const run of this.runs) {
+      this.tpService.getRunCases(run.id!).subscribe({
+        next: (cases) => {
+          for (const c of cases) {
+            const title = c.testCaseTitle || 'Untitled';
+            if (!historyMap[title]) historyMap[title] = [];
+            historyMap[title].push({
+              runName: run.name,
+              status: c.latestStatus || 'UNTESTED',
+              executedBy: c.assignedTo || run.assignedTo || '—',
+              executedAt: ''
+            });
+          }
+          loaded++;
+          if (loaded === this.runs.length) {
+            this.caseHistoryData = Object.entries(historyMap)
+              .map(([caseTitle, results]) => ({ caseTitle, results }))
+              .sort((a, b) => a.caseTitle.localeCompare(b.caseTitle));
+          }
+        },
+        error: () => { loaded++; }
+      });
+    }
+  }
+
+  get filteredCaseHistory(): { caseTitle: string; results: { runName: string; status: string; executedBy: string; executedAt: string }[] }[] {
+    let data = this.caseHistoryData;
+    if (this.caseHistorySearch) {
+      const q = this.caseHistorySearch.toLowerCase();
+      data = data.filter(d => d.caseTitle.toLowerCase().includes(q));
+    }
+    if (this.caseHistoryFilter) {
+      data = data.filter(d => d.results.some(r => r.status === this.caseHistoryFilter));
+    }
+    return data;
+  }
+
+  onHistoryTabChange(tab: 'comparison' | 'userFailures' | 'caseHistory'): void {
+    this.historyTab = tab;
+    if (tab === 'userFailures' && this.userFailureData.length === 0) {
+      this.loadUserFailures();
+    }
+    if (tab === 'caseHistory' && this.caseHistoryData.length === 0) {
+      this.loadCaseHistory();
+    }
+  }
+
+  getCasePassRate(item: { results: { status: string }[] }): number {
+    if (!item.results.length) return 0;
+    const passed = item.results.filter(r => r.status === 'PASSED').length;
+    return Math.round((passed / item.results.length) * 100);
+  }
+
+  countByStatus(cases: { status: string }[], status: string): number {
+    return cases.filter(c => c.status === status).length;
   }
 }

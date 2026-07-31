@@ -29,6 +29,7 @@ import { TpTestDashboardComponent } from './pages/dashboard/tp-test/tp-test-dash
 import { TpTestProjectsComponent } from './pages/dashboard/tp-test/tp-test-projects/tp-test-projects.component';
 import { TpTestSuitesComponent } from './pages/dashboard/tp-test/tp-test-suites/tp-test-suites.component';
 import { TpTestRunsComponent } from './pages/dashboard/tp-test/tp-test-runs/tp-test-runs.component';
+import { TpTestHistoryComponent } from './pages/dashboard/tp-test/tp-test-history/tp-test-history.component';
 import { AboutComponent } from './pages/about/about.component';
 import { InventoryManagementComponent } from './pages/inventory-management/inventory-management.component';
 import { DocCenterComponent } from './pages/doc-center/doc-center.component';
@@ -95,22 +96,28 @@ export const routes: Routes = [
       {
         path:'tp-test',
         component:TpTestDashboardComponent,
-        title:'Test Suite Dashboard | Tata Play Dashboard'
+        title:'Test Hub Dashboard | Tata Play Dashboard'
       },
       {
         path:'tp-test/projects',
         component:TpTestProjectsComponent,
-        title:'Test Suite Projects | Tata Play Dashboard'
+        title:'Test Hub Projects | Tata Play Dashboard'
       },
       {
         path:'tp-test/projects/:projectId/suites',
         component:TpTestSuitesComponent,
-        title:'Test Suite Suites | Tata Play Dashboard'
+        title:'Test Hub Suites | Tata Play Dashboard'
       },
       {
         path:'tp-test/runs',
         component:TpTestRunsComponent,
-        title:'Test Suite Runs | Tata Play Dashboard'
+        title:'Test Hub Runs | Tata Play Dashboard'
+      },
+      {
+        path:'tp-test/history',
+        component:TpTestHistoryComponent,
+        canActivate: [AdminGuard],
+        title:'TestRun Insights | Tata Play Dashboard'
       },
       {
         path:'about',

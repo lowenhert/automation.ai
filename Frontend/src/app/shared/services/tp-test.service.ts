@@ -64,6 +64,7 @@ export interface TpTestRun {
   name: string;
   status?: string; // ACTIVE, COMPLETED, CLOSED
   assignedTo?: string;
+  startDate?: string;
   deadline?: string;
   testType?: string;
   stbBoxName?: string;

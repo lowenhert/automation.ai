@@ -185,6 +185,13 @@ export class TpTestSuitesComponent implements OnInit {
   createCase(): void {
     if (!this.newCase.title?.trim() || !this.targetSectionId) return;
     const payload: any = { ...this.newCase, sectionId: this.targetSectionId };
+    // Convert empty strings to null for backend
+    if (!payload.assignedTo) payload.assignedTo = null;
+    if (!payload.preconditions) payload.preconditions = null;
+    if (!payload.steps) payload.steps = null;
+    if (!payload.expectedResult) payload.expectedResult = null;
+    if (!payload.actualResult) payload.actualResult = null;
+    if (!payload.remark) payload.remark = null;
     this.tpService.createCase(payload).subscribe({
       next: () => { this.showCreateCaseModal = false; this.selectSuite(this.activeSuite!); }
     });

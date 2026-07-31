@@ -52,11 +52,12 @@ export class AppSidebarComponent {
     },
     {
       icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9 2C7.89543 2 7 2.89543 7 4V5H5C3.89543 5 3 5.89543 3 7V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V7C21 5.89543 20.1046 5 19 5H17V4C17 2.89543 16.1046 2 15 2H9ZM15 4H9V5H15V4ZM5 7H19V20H5V7ZM8 10H10V12H8V10ZM11 10H16V12H11V10ZM8 14H10V16H8V14ZM11 14H16V16H11V14Z" fill="currentColor"/></svg>`,
-      name: "Test Suite",
+      name: "Test Hub",
       subItems: [
         { name: "Dashboard", path: "/tp-test" },
         { name: "Projects", path: "/tp-test/projects" },
-        { name: "Test Runs", path: "/tp-test/runs" }
+        { name: "Test Runs", path: "/tp-test/runs" },
+        { name: "TestRun Insights", path: "/tp-test/history" }
       ],
     },
     // {

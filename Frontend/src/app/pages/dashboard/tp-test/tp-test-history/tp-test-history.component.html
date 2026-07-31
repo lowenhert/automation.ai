@@ -1,0 +1,423 @@
+<div class="space-y-5">
+
+  <!-- ── Header ────────────────────────────────────────────────────── -->
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <button (click)="goBack()"
+        class="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-[#465FFF] transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <div>
+        <h1 class="text-lg font-bold text-gray-800 dark:text-white">TestRun Insights</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Compare runs, track user performance, and analyze test case trends</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <select [(ngModel)]="selectedProjectId" (ngModelChange)="onProjectChange()"
+        class="text-sm h-[38px] px-3 pr-8 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+        <option *ngFor="let p of projects" [ngValue]="p.id">{{ p.name }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── Tabs ──────────────────────────────────────────────────────── -->
+  <div class="flex gap-1 rounded-xl bg-gray-100 dark:bg-gray-800 p-1">
+    <button (click)="onTabChange('allRuns')"
+      class="flex-1 px-4 py-2.5 text-xs font-semibold rounded-lg transition-colors"
+      [ngClass]="activeTab === 'allRuns' ? 'bg-white dark:bg-gray-900 text-[#465FFF] shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'">
+      📋 All Runs
+    </button>
+    <button (click)="onTabChange('comparison')"
+      class="flex-1 px-4 py-2.5 text-xs font-semibold rounded-lg transition-colors"
+      [ngClass]="activeTab === 'comparison' ? 'bg-white dark:bg-gray-900 text-[#465FFF] shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'">
+      📊 Run Comparison
+    </button>
+    <button *ngIf="isAdminUser" (click)="onTabChange('userAnalysis')"
+      class="flex-1 px-4 py-2.5 text-xs font-semibold rounded-lg transition-colors"
+      [ngClass]="activeTab === 'userAnalysis' ? 'bg-white dark:bg-gray-900 text-[#465FFF] shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'">
+      👤 User Analysis
+    </button>
+    <button (click)="onTabChange('caseHistory')"
+      class="flex-1 px-4 py-2.5 text-xs font-semibold rounded-lg transition-colors"
+      [ngClass]="activeTab === 'caseHistory' ? 'bg-white dark:bg-gray-900 text-[#465FFF] shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'">
+      🔍 Case History
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="flex justify-center py-16">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: ALL RUNS                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="!isLoading && activeTab === 'allRuns'">
+
+    <!-- Trend Chart -->
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">Execution Trend Across Runs</h3>
+      <apx-chart
+        [series]="trendSeries"
+        [chart]="trendChart"
+        [xaxis]="trendXAxis"
+        [colors]="trendColors"
+      ></apx-chart>
+    </div>
+
+    <!-- Filters -->
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-3 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center gap-3">
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" [(ngModel)]="runsSearch" placeholder="Search runs..."
+          class="w-full text-sm h-[36px] pl-9 pr-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none" />
+      </div>
+      <select [(ngModel)]="runsStatusFilter"
+        class="text-xs h-[36px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+        <option value="">All Status</option>
+        <option value="IN_PROGRESS">In Progress</option>
+        <option value="COMPLETED">Completed</option>
+        <option value="NOT_STARTED">Not Started</option>
+        <option value="OVERDUE">Overdue</option>
+      </select>
+      <select *ngIf="uniqueAssignees.length > 0" [(ngModel)]="runsAssigneeFilter"
+        class="text-xs h-[36px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+        <option value="">All Assignees</option>
+        <option *ngFor="let a of uniqueAssignees" [value]="a">{{ a }}</option>
+      </select>
+      <span class="text-xs text-gray-400 font-medium">{{ filteredRuns.length }} runs</span>
+    </div>
+
+    <!-- Runs Table -->
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.02]">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-10">#</th>
+              <th (click)="toggleSort('name')" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:text-[#465FFF]">
+                Run Name <span *ngIf="runsSortBy === 'name'">{{ runsSortDir === 'asc' ? '↑' : '↓' }}</span>
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Assignee</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Type</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+              <th (click)="toggleSort('progress')" class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:text-[#465FFF]">
+                Progress <span *ngIf="runsSortBy === 'progress'">{{ runsSortDir === 'asc' ? '↑' : '↓' }}</span>
+              </th>
+              <th (click)="toggleSort('passRate')" class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:text-[#465FFF]">
+                Pass Rate <span *ngIf="runsSortBy === 'passRate'">{{ runsSortDir === 'asc' ? '↑' : '↓' }}</span>
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">P / F / B / U</th>
+              <th (click)="toggleSort('date')" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase cursor-pointer hover:text-[#465FFF]">
+                Date <span *ngIf="runsSortBy === 'date'">{{ runsSortDir === 'asc' ? '↑' : '↓' }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let run of filteredRuns; let i = index"
+              class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+              <td class="px-4 py-3 text-xs text-gray-400 font-mono">{{ i + 1 }}</td>
+              <td class="px-4 py-3">
+                <p class="text-xs font-semibold text-gray-800 dark:text-white">{{ run.name }}</p>
+                <p *ngIf="run.stbBoxName" class="text-[9px] text-gray-400 mt-0.5">📦 {{ run.stbBoxName }}</p>
+              </td>
+              <td class="px-4 py-3">
+                <span *ngIf="run.assignedTo" class="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-medium">{{ run.assignedTo }}</span>
+                <span *ngIf="!run.assignedTo" class="text-[10px] text-gray-400">—</span>
+              </td>
+              <td class="px-4 py-3">
+                <span *ngIf="run.testType" class="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 font-medium">{{ run.testType }}</span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" [ngClass]="getStatusBadgeClass(run)">{{ getStatusLabel(run) }}</span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                    <div class="h-full bg-[#465FFF] rounded-full transition-all" [style.width.%]="getProgressPercent(run)"></div>
+                  </div>
+                  <span class="text-[10px] font-bold text-gray-600 dark:text-gray-300 w-8 text-right">{{ getProgressPercent(run) }}%</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span class="text-xs font-bold" [ngClass]="getPassRate(run) >= 80 ? 'text-green-600' : getPassRate(run) >= 50 ? 'text-amber-600' : 'text-red-600'">
+                  {{ getPassRate(run) }}%
+                </span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <div class="flex items-center justify-center gap-1.5 text-[10px] font-bold">
+                  <span class="text-green-600">{{ run.passedCount ?? 0 }}</span>
+                  <span class="text-gray-300">/</span>
+                  <span class="text-red-600">{{ run.failedCount ?? 0 }}</span>
+                  <span class="text-gray-300">/</span>
+                  <span class="text-purple-600">{{ run.blockedCount ?? 0 }}</span>
+                  <span class="text-gray-300">/</span>
+                  <span class="text-gray-400">{{ (run.totalCases ?? 0) - (run.passedCount ?? 0) - (run.failedCount ?? 0) - (run.blockedCount ?? 0) }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <p class="text-[10px] text-gray-500">{{ run.createdAt | date:'MMM d, y' }}</p>
+                <p *ngIf="run.startDate" class="text-[9px] text-gray-400">Start: {{ run.startDate | date:'MMM d' }}</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div *ngIf="filteredRuns.length === 0" class="py-10 text-center text-sm text-gray-400">No runs found.</div>
+    </div>
+  </ng-container>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: RUN COMPARISON                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="!isLoading && activeTab === 'comparison'">
+    <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5">
+      <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">Select Runs to Compare (2–5)</h3>
+      <p class="text-[11px] text-gray-400 mb-4">Compare test case results side-by-side across different runs to identify regressions and improvements.</p>
+      <div class="flex flex-wrap gap-2 mb-5">
+        <button *ngFor="let run of runs" (click)="toggleComparisonRun(run.id!)"
+          class="text-xs font-medium px-3 py-2 rounded-lg border transition-all"
+          [ngClass]="comparisonRunIds.includes(run.id!)
+            ? 'border-[#465FFF] bg-[#465FFF]/10 text-[#465FFF] shadow-sm'
+            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'">
+          <span class="mr-1">{{ comparisonRunIds.includes(run.id!) ? '✓' : '○' }}</span>
+          {{ run.name }}
+          <span class="ml-1 text-[9px] opacity-60">({{ getPassRate(run) }}%)</span>
+        </button>
+      </div>
+
+      <div *ngIf="comparisonLoading" class="flex justify-center py-10">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+      </div>
+
+      <div *ngIf="!comparisonLoading && comparisonData.length >= 2" class="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 dark:bg-gray-900">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase sticky left-0 bg-gray-50 dark:bg-gray-900 min-w-[200px]">Test Case</th>
+              <th *ngFor="let d of comparisonData" class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase min-w-[130px]">
+                {{ d.runName }}
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-20">Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let title of getComparisonCaseTitles()" class="border-t border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+              <td class="px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-900 max-w-[220px] truncate" [title]="title">{{ title }}</td>
+              <td *ngFor="let d of comparisonData" class="px-4 py-2.5 text-center">
+                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" [ngClass]="getStatusClass(getComparisonStatus(d, title))">
+                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="getStatusDotClass(getComparisonStatus(d, title))"></span>
+                  {{ getComparisonStatus(d, title) }}
+                </span>
+              </td>
+              <td class="px-4 py-2.5 text-center">
+                <span *ngIf="getComparisonDiff(title) === 'improved'" class="text-green-600 text-xs font-bold">↑</span>
+                <span *ngIf="getComparisonDiff(title) === 'regressed'" class="text-red-600 text-xs font-bold">↓</span>
+                <span *ngIf="getComparisonDiff(title) === 'same'" class="text-gray-400 text-xs">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="!comparisonLoading && comparisonData.length < 2" class="py-10 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 mx-auto flex items-center justify-center mb-3">
+          <span class="text-2xl">📊</span>
+        </div>
+        <p class="text-sm text-gray-400 font-medium">Select at least 2 runs to compare.</p>
+        <p class="text-xs text-gray-400 mt-1">Click the run buttons above to select them for comparison.</p>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 3: USER ANALYSIS (Admin Only)                              -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="!isLoading && activeTab === 'userAnalysis'">
+
+    <div *ngIf="userAnalysisLoading" class="flex justify-center py-16">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+    </div>
+
+    <ng-container *ngIf="!userAnalysisLoading && userAnalysisData.length > 0">
+      <!-- User Chart -->
+      <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+        <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">User Performance Overview</h3>
+        <apx-chart
+          [series]="userBarSeries"
+          [chart]="userBarChart"
+          [xaxis]="userBarXAxis"
+          [colors]="userBarColors"
+          [plotOptions]="userBarPlotOptions"
+          [legend]="userBarLegend"
+          [dataLabels]="userBarDataLabels"
+          [grid]="userBarGrid"
+        ></apx-chart>
+      </div>
+
+      <!-- User Cards -->
+      <div class="space-y-3">
+        <div *ngFor="let u of userAnalysisData"
+          class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+          <!-- User Header -->
+          <div (click)="toggleUserExpand(u.user)"
+            class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                [ngClass]="getUserPassRate(u) >= 80 ? 'bg-green-100 dark:bg-green-900/30' : getUserPassRate(u) >= 50 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-red-100 dark:bg-red-900/30'">
+                <span class="text-sm font-bold" [ngClass]="getUserPassRate(u) >= 80 ? 'text-green-600' : getUserPassRate(u) >= 50 ? 'text-amber-600' : 'text-red-600'">
+                  {{ u.user === 'Unassigned' ? '?' : u.user.charAt(0).toUpperCase() }}
+                </span>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-gray-800 dark:text-white">{{ u.user }}</p>
+                <p class="text-[10px] text-gray-400">{{ u.totalAssigned }} cases assigned across all runs</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-3 text-xs font-bold">
+                <span class="flex items-center gap-1 text-green-600"><span class="w-2 h-2 rounded-full bg-green-500"></span>{{ u.passed }}</span>
+                <span class="flex items-center gap-1 text-red-600"><span class="w-2 h-2 rounded-full bg-red-500"></span>{{ u.failed }}</span>
+                <span class="flex items-center gap-1 text-purple-600"><span class="w-2 h-2 rounded-full bg-purple-500"></span>{{ u.blocked }}</span>
+                <span class="flex items-center gap-1 text-gray-400"><span class="w-2 h-2 rounded-full bg-gray-300"></span>{{ u.untested }}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-sm font-bold" [ngClass]="getUserPassRate(u) >= 80 ? 'text-green-600' : getUserPassRate(u) >= 50 ? 'text-amber-600' : 'text-red-600'">
+                  {{ getUserPassRate(u) }}%
+                </span>
+                <p class="text-[9px] text-gray-400">Pass Rate</p>
+              </div>
+              <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-180]="userAnalysisExpandedUser === u.user" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Expanded: Failed Cases -->
+          <div *ngIf="userAnalysisExpandedUser === u.user && u.failedCases.length > 0"
+            class="px-5 pb-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+            <p class="text-[10px] text-gray-400 uppercase font-semibold pt-3 mb-2">Failed & Blocked Cases</p>
+            <div class="space-y-1 max-h-[240px] overflow-y-auto">
+              <div *ngFor="let f of u.failedCases" class="flex items-center gap-2 text-xs py-1.5 px-2 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                <span class="w-2 h-2 rounded-full flex-shrink-0" [ngClass]="f.status === 'FAILED' ? 'bg-red-500' : 'bg-purple-500'"></span>
+                <span class="text-gray-700 dark:text-gray-300 truncate flex-1">{{ f.title }}</span>
+                <span class="text-[9px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                  [ngClass]="f.status === 'FAILED' ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' : 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'">
+                  {{ f.status }}
+                </span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 flex-shrink-0">{{ f.runName }}</span>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="userAnalysisExpandedUser === u.user && u.failedCases.length === 0"
+            class="px-5 pb-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+            <p class="text-xs text-green-600 py-3 text-center font-medium">🎉 No failures — all tests passed!</p>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <div *ngIf="!userAnalysisLoading && userAnalysisData.length === 0 && runs.length === 0" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-14 text-center">
+      <p class="text-sm text-gray-400">No runs available for analysis.</p>
+    </div>
+  </ng-container>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 4: CASE HISTORY                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="!isLoading && activeTab === 'caseHistory'">
+
+    <div *ngIf="caseHistoryLoading" class="flex justify-center py-16">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+    </div>
+
+    <ng-container *ngIf="!caseHistoryLoading && caseHistoryData.length > 0">
+      <!-- Filters -->
+      <div class="rounded-2xl border border-gray-200 bg-white px-5 py-3 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col md:flex-row md:items-center gap-3">
+        <div class="relative flex-1">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" [(ngModel)]="caseHistorySearch" placeholder="Search test cases..."
+            class="w-full text-sm h-[36px] pl-9 pr-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] outline-none" />
+        </div>
+        <select [(ngModel)]="caseHistoryStatusFilter"
+          class="text-xs h-[36px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+          <option value="">All Status</option>
+          <option value="PASSED">Has Passed</option>
+          <option value="FAILED">Has Failed</option>
+          <option value="BLOCKED">Has Blocked</option>
+          <option value="UNTESTED">Has Untested</option>
+        </select>
+        <select [(ngModel)]="caseHistorySortBy"
+          class="text-xs h-[36px] px-3 pr-7 border border-gray-200 rounded-lg bg-transparent text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+          <option value="name">Sort: Name</option>
+          <option value="passRate">Sort: Pass Rate</option>
+          <option value="runs">Sort: Most Runs</option>
+        </select>
+        <span class="text-xs text-gray-400 font-medium">{{ filteredCaseHistory.length }} cases</span>
+      </div>
+
+      <!-- Legend -->
+      <div class="flex items-center gap-4 px-2 text-[10px] font-medium text-gray-500">
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-green-100 border border-green-300"></span> Stable (≥80%)</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-100 border border-amber-300"></span> Flaky (40–79%)</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-100 border border-red-300"></span> Failing (&lt;40%)</span>
+      </div>
+
+      <!-- Case History Table -->
+      <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+        <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 z-10">
+              <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase min-w-[220px]">Test Case</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-16">Runs</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-20">Pass Rate</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase w-20">Stability</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">History (oldest → newest)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of filteredCaseHistory" class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                <td class="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-300 max-w-[240px] truncate" [title]="item.caseTitle">{{ item.caseTitle }}</td>
+                <td class="px-4 py-3 text-center text-xs text-gray-500 font-medium">{{ item.results.length }}</td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-xs font-bold" [ngClass]="getCasePassRate(item) >= 80 ? 'text-green-600' : getCasePassRate(item) >= 50 ? 'text-amber-600' : 'text-red-600'">
+                    {{ getCasePassRate(item) }}%
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    [ngClass]="getCaseStability(item) === 'stable' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : getCaseStability(item) === 'flaky' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'">
+                    {{ getCaseStability(item) === 'stable' ? 'Stable' : getCaseStability(item) === 'flaky' ? 'Flaky' : 'Failing' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-1 flex-wrap">
+                    <span *ngFor="let r of item.results"
+                      class="w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold cursor-default"
+                      [ngClass]="getStatusClass(r.status)"
+                      [title]="r.runName + ' | ' + r.assignedTo + ' | ' + r.status">
+                      {{ r.status === 'PASSED' ? '✓' : r.status === 'FAILED' ? '✗' : r.status === 'BLOCKED' ? '⊘' : '—' }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div *ngIf="filteredCaseHistory.length === 0" class="py-10 text-center text-sm text-gray-400">No cases match the current filters.</div>
+      </div>
+    </ng-container>
+
+    <div *ngIf="!caseHistoryLoading && caseHistoryData.length === 0 && runs.length === 0" class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-14 text-center">
+      <p class="text-sm text-gray-400">No runs available for case history analysis.</p>
+    </div>
+  </ng-container>
+
+</div>

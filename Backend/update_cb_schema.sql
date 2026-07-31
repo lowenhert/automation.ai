@@ -19,3 +19,11 @@ ALTER TABLE tp_test_run DROP COLUMN build_type;
 
 ALTER TABLE tp_run_case ADD COLUMN actual_result TEXT;
 ALTER TABLE tp_run_case ADD COLUMN remark TEXT;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Migration: Add start_date column to tp_test_run
+-- Date: 2026-07-31
+-- Description: Store the start date for test runs
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE tp_test_run ADD COLUMN start_date DATE;

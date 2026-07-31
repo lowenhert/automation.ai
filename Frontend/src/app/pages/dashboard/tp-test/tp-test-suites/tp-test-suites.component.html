@@ -42,7 +42,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
           </svg>
         </div>
-        <h3 class="text-sm font-bold text-blue-800 dark:text-blue-300">Quick Guide — How to Use Test Suites</h3>
+        <h3 class="text-sm font-bold text-blue-800 dark:text-blue-300">Quick Guide — How to Use Test Hub</h3>
       </div>
       <button (click)="showTutorial = false" class="text-blue-400 hover:text-blue-600 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -415,7 +415,7 @@
   <div *ngIf="showCreateSuiteModal" class="fixed inset-0 z-[999999] flex items-center justify-center p-4">
     <div (click)="showCreateSuiteModal = false" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
     <div class="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6">
-      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Create Test Suite</h2>
+      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Create Test Hub</h2>
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">SUITE NAME *</label>
@@ -489,6 +489,14 @@
               <option value="OTHER">Other</option>
             </select>
           </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ASSIGN TO</label>
+          <select [(ngModel)]="newCase.assignedTo"
+            class="w-full text-sm h-[40px] px-3 border border-gray-300 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] outline-none">
+            <option value="">Unassigned</option>
+            <option *ngFor="let u of users" [value]="u.username">{{ u.firstName }} {{ u.lastName }} ({{ u.username }})</option>
+          </select>
         </div>
         <div>
           <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">PRECONDITIONS</label>

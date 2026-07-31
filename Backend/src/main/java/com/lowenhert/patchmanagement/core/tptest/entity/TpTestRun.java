@@ -38,6 +38,9 @@ public class TpTestRun {
     @Column(name = "assigned_to")
     private String assignedTo;
 
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
     @Column
     private LocalDate deadline;
 

@@ -1,0 +1,10 @@
+# AI Engine dependencies (Python)
+opencv-python
+numpy
+pytesseract
+scikit-image
+torch
+torchvision
+fastapi
+uvicorn
+pydantic

@@ -1,0 +1,283 @@
+<app-page-breadcrumb pageTitle="Screen Exploration"></app-page-breadcrumb>
+
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-12">
+
+  <!-- Left: device, start form, session control, remote -->
+  <div class="space-y-5 xl:col-span-4">
+    <app-component-card title="Exploration Session" desc="Bounded exploration of a connected emulator or STB">
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Device</label>
+        <div class="flex items-center gap-2">
+          <select [ngModel]="deviceId()" (ngModelChange)="selectDevice($event)" [disabled]="sessionOpen()"
+            class="flex-1 text-sm h-[36px] px-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 outline-none disabled:opacity-60">
+            <option [ngValue]="null">{{ onlineDevices().length ? 'Select a device' : 'No online devices' }}</option>
+            @for (d of onlineDevices(); track d.serial) {
+              <option [ngValue]="d.serial">{{ d.model || d.serial }} ({{ d.serial }})</option>
+            }
+          </select>
+          <button type="button" (click)="loadDevices()" title="Refresh devices"
+            class="h-[36px] w-[36px] flex items-center justify-center text-[#465FFF] border border-[#465FFF]/30 hover:bg-[#465FFF]/5 rounded-lg">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+        @if (devicesError()) {
+          <p class="mt-1 text-xs text-error-600 dark:text-error-500">{{ devicesError() }}</p>
+        }
+      </div>
+
+      @if (!sessionOpen()) {
+        <form class="space-y-3" (ngSubmit)="start()">
+          <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
+            <button type="button" (click)="mode = 'MANUAL'" class="flex-1 h-[34px] transition-colors"
+              [ngClass]="mode === 'MANUAL' ? 'bg-[#465FFF] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">Manual</button>
+            <button type="button" (click)="mode = 'AUTO'" class="flex-1 h-[34px] transition-colors"
+              [ngClass]="mode === 'AUTO' ? 'bg-[#465FFF] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'">Auto (bounded)</button>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="text-xs text-gray-500 dark:text-gray-400">Max steps
+              <input type="number" name="maxSteps" [(ngModel)]="maxSteps" min="1" max="200"
+                class="mt-1 w-full text-sm h-[34px] px-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90" />
+            </label>
+            <label class="text-xs text-gray-500 dark:text-gray-400">Max time (s)
+              <input type="number" name="maxDuration" [(ngModel)]="maxDurationSeconds" min="10" max="1800"
+                class="mt-1 w-full text-sm h-[34px] px-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90" />
+            </label>
+            <label class="text-xs text-gray-500 dark:text-gray-400">Settle (ms)
+              <input type="number" name="settle" [(ngModel)]="settleMs" min="300" max="10000" step="100"
+                class="mt-1 w-full text-sm h-[34px] px-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90" />
+            </label>
+          </div>
+          @if (mode === 'AUTO') {
+            <div class="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+              <label class="flex items-center gap-2"><input type="checkbox" name="allowSelect" [(ngModel)]="allowSelect" class="rounded border-gray-300 text-[#465FFF]" />
+                Allow SELECT (OK) <span class="text-xs text-gray-400">— still blocked on destructive screens</span></label>
+              <label class="flex items-center gap-2"><input type="checkbox" name="allowHome" [(ngModel)]="allowHome" class="rounded border-gray-300 text-[#465FFF]" />
+                Allow HOME</label>
+            </div>
+          }
+          <button type="submit" [disabled]="!deviceId() || starting()"
+            class="w-full h-[40px] text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            @if (starting()) {
+              <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span> Capturing start screen...
+            } @else { Start {{ mode === 'AUTO' ? 'auto exploration' : 'manual session' }} }
+          </button>
+          @if (startError()) {
+            <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-500">{{ startError() }}</div>
+          }
+          <p class="text-xs text-gray-400">Only D-pad, OK, Back and Home keys are ever sent. OK is refused on screens that look destructive (reset, delete, purchase, sign out...).</p>
+        </form>
+      }
+
+      @if (session(); as s) {
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-800 dark:text-white/90">Session #{{ s.id }} · {{ s.mode }}</span>
+            <span class="inline-flex px-2 py-0.5 rounded-full text-theme-xs font-medium" [class]="statusClass(s.status)">
+              {{ s.stopRequested && isOpen(s.status) ? 'STOPPING' : s.status }}
+            </span>
+          </div>
+          <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+            <div class="h-full bg-[#465FFF] transition-all" [style.width.%]="(s.stepsTaken / s.maxSteps) * 100"></div>
+          </div>
+          <dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+            <dt class="text-gray-400">Steps</dt><dd class="text-gray-700 dark:text-gray-300">{{ s.stepsTaken }} / {{ s.maxSteps }}</dd>
+            <dt class="text-gray-400">New screens</dt><dd class="text-gray-700 dark:text-gray-300">{{ s.newScreens }}</dd>
+            <dt class="text-gray-400">Current screen</dt><dd class="text-gray-700 dark:text-gray-300 truncate">{{ s.currentNode?.label || '—' }}</dd>
+            <dt class="text-gray-400">Started</dt><dd class="text-gray-700 dark:text-gray-300">{{ s.startedAt | date: 'mediumTime' }}</dd>
+          </dl>
+          @if (s.stopReason) {
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ s.stopReason }}</p>
+          }
+          @if (isOpen(s.status)) {
+            <button type="button" (click)="stop()" [disabled]="stopping() || s.stopRequested"
+              class="w-full h-[36px] text-sm font-medium text-error-600 border border-error-200 hover:bg-error-50 dark:text-error-500 dark:border-error-500/30 dark:hover:bg-error-500/10 rounded-lg disabled:opacity-60">
+              {{ s.stopRequested ? 'Stopping after current step...' : 'Stop exploration' }}
+            </button>
+          }
+        </div>
+
+        @if (s.mode === 'MANUAL' && isOpen(s.status)) {
+          <div class="flex flex-col items-center gap-2 py-2">
+            <div class="grid grid-cols-3 gap-2">
+              <span></span>
+              <button type="button" (click)="press('DPAD_UP')" [disabled]="!!acting()" title="Up"
+                class="h-11 w-11 rounded-lg border border-gray-200 dark:border-gray-700 text-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-60">↑</button>
+              <span></span>
+              <button type="button" (click)="press('DPAD_LEFT')" [disabled]="!!acting()" title="Left"
+                class="h-11 w-11 rounded-lg border border-gray-200 dark:border-gray-700 text-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-60">←</button>
+              <button type="button" (click)="press('SELECT')" [disabled]="!!acting()" title="Select / OK"
+                class="h-11 w-11 rounded-full bg-[#465FFF] text-white text-sm font-semibold hover:bg-[#3A4FE0] disabled:opacity-60">OK</button>
+              <button type="button" (click)="press('DPAD_RIGHT')" [disabled]="!!acting()" title="Right"
+                class="h-11 w-11 rounded-lg border border-gray-200 dark:border-gray-700 text-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-60">→</button>
+              <span></span>
+              <button type="button" (click)="press('DPAD_DOWN')" [disabled]="!!acting()" title="Down"
+                class="h-11 w-11 rounded-lg border border-gray-200 dark:border-gray-700 text-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-60">↓</button>
+              <span></span>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" (click)="press('BACK')" [disabled]="!!acting()"
+                class="h-9 px-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-60">Back</button>
+              <button type="button" (click)="press('HOME')" [disabled]="!!acting()"
+                class="h-9 px-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-60">Home</button>
+            </div>
+            @if (acting()) {
+              <p class="text-xs text-gray-400 flex items-center gap-2">
+                <span class="w-3 h-3 border-2 border-gray-200 border-t-[#465FFF] rounded-full animate-spin"></span>
+                Sending {{ actionLabel(acting()!) }}, capturing and identifying screen...
+              </p>
+            } @else if (lastStep(); as step) {
+              <p class="text-xs" [ngClass]="step.status === 'OK' ? 'text-gray-500 dark:text-gray-400' : 'text-error-600 dark:text-error-500'">
+                {{ actionLabel(step.action) }}:
+                @if (step.status === 'OK') {
+                  {{ step.from?.label }} → {{ step.to?.label }}{{ step.newScreen ? ' (new screen)' : step.sameScreen ? ' (same screen)' : '' }}
+                } @else { {{ step.status }} — {{ step.message }} }
+              </p>
+            }
+          </div>
+        }
+      }
+    </app-component-card>
+
+    <app-component-card title="Recent Sessions">
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800 -my-2">
+        @for (r of recentSessions(); track r.id) {
+          <li class="py-2 flex items-center justify-between gap-2">
+            <button type="button" (click)="openSession(r)" class="text-left min-w-0">
+              <p class="text-sm text-gray-800 dark:text-white/90">#{{ r.id }} · {{ r.mode }} · {{ r.stepsTaken }} steps</p>
+              <p class="text-xs text-gray-400 truncate">{{ r.deviceSerial }} · {{ r.startedAt | date: 'short' }}</p>
+            </button>
+            <span class="inline-flex px-2 py-0.5 rounded-full text-theme-xs font-medium shrink-0" [class]="statusClass(r.status)">{{ r.status }}</span>
+          </li>
+        } @empty {
+          <li class="py-4 text-center text-sm text-gray-400">No sessions yet</li>
+        }
+      </ul>
+    </app-component-card>
+  </div>
+
+  <!-- Right: graph + node detail -->
+  <div class="space-y-5 xl:col-span-8">
+    <app-component-card title="Screen Graph" desc="Identified screens and observed transitions (source → action → destination)">
+      @if (graphError()) {
+        <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-500">{{ graphError() }}</div>
+      }
+      @if (layout(); as l) {
+        @if (l.nodes.size === 0) {
+          <div class="py-12 text-center text-sm text-gray-400">No screens explored on this device yet</div>
+        } @else {
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+            <span>{{ graph()!.nodes.length }} screens · {{ graph()!.edges.length }} transitions</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded border-2 border-[#465FFF]"></span> current</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded bg-[#fef3f2] border border-error-300"></span> destructive</span>
+            <span>↻ badges = focus moves within a screen</span>
+          </div>
+          <div class="overflow-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-white/[0.02] max-h-[560px]">
+            <svg [attr.width]="l.width" [attr.height]="l.height" [attr.viewBox]="'0 0 ' + l.width + ' ' + l.height" class="block">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#98a2b3"></path>
+                </marker>
+              </defs>
+              @for (e of l.edges; track e.from + '-' + e.to) {
+                <g>
+                  <path [attr.d]="e.path" fill="none" [attr.stroke]="e.backward ? '#d0d5dd' : '#98a2b3'" stroke-width="1.5"
+                    [attr.stroke-dasharray]="e.backward ? '4 3' : null" marker-end="url(#arrow)"></path>
+                  <text [attr.x]="e.labelX" [attr.y]="e.labelY" text-anchor="middle" font-size="11" fill="#475467">
+                    {{ e.labels.join(' ') }}{{ e.count > 1 ? ' ×' + e.count : '' }}
+                  </text>
+                </g>
+              }
+              @for (n of layoutNodes(); track n.id) {
+                @let node = nodeById().get(n.id);
+                <g class="cursor-pointer" (click)="node && selectNode(node)">
+                  <rect [attr.x]="n.x" [attr.y]="n.y" [attr.width]="layoutOptions.nodeWidth" [attr.height]="layoutOptions.nodeHeight" rx="10"
+                    [attr.fill]="nodeFill(node)"
+                    [attr.stroke]="session()?.currentNode?.id === n.id ? '#465FFF' : selectedNode()?.id === n.id ? '#7592ff' : node?.riskLevel === 'DESTRUCTIVE' ? '#fda29b' : '#d0d5dd'"
+                    [attr.stroke-width]="session()?.currentNode?.id === n.id || selectedNode()?.id === n.id ? 2.5 : 1"></rect>
+                  <text [attr.x]="n.x + 10" [attr.y]="n.y + 22" font-size="12" font-weight="600" fill="#1d2939">{{ truncate(node?.label ?? '#' + n.id, 22) }}</text>
+                  <text [attr.x]="n.x + 10" [attr.y]="n.y + 40" font-size="10" fill="#667085">
+                    {{ node?.screenType || 'screen' }} · {{ node?.visitCount }} visits{{ node?.labelSource === 'LLM' ? ' · AI' : '' }}
+                  </text>
+                  @if (n.selfLoops.length) {
+                    <text [attr.x]="n.x + layoutOptions.nodeWidth - 8" [attr.y]="n.y + 14" font-size="10" text-anchor="end" fill="#465FFF">↻ {{ selfLoopSummary(n.selfLoops) }}</text>
+                  }
+                </g>
+              }
+            </svg>
+          </div>
+        }
+      } @else {
+        <div class="py-12 text-center text-sm text-gray-400">Select a device to view its screen graph</div>
+      }
+    </app-component-card>
+
+    @if (selectedNode(); as node) {
+      <app-component-card [title]="'Screen: ' + node.label" desc="Representative capture and interpretation">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div class="md:col-span-2 flex justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.02] p-2 min-h-[200px] items-center">
+            @if (selectedNodeImage()) {
+              <img [src]="selectedNodeImage()" [alt]="node.label" class="max-h-[380px] w-auto rounded-lg" />
+            } @else if (loadingNodeImage()) {
+              <span class="w-6 h-6 border-2 border-gray-200 border-t-[#465FFF] rounded-full animate-spin"></span>
+            } @else {
+              <span class="text-sm text-gray-400">Screenshot unavailable</span>
+            }
+          </div>
+          <dl class="md:col-span-3 grid grid-cols-3 gap-x-3 gap-y-2 text-sm content-start">
+            <dt class="text-gray-400">Type</dt><dd class="col-span-2 text-gray-800 dark:text-white/90">{{ node.screenType || '—' }}</dd>
+            <dt class="text-gray-400">Risk</dt>
+            <dd class="col-span-2"><span class="inline-flex px-2 py-0.5 rounded-full text-theme-xs font-medium" [class]="riskClass(node.riskLevel)">{{ node.riskLevel }}</span></dd>
+            <dt class="text-gray-400">Label source</dt><dd class="col-span-2 text-gray-800 dark:text-white/90">{{ node.labelSource === 'LLM' ? 'AI (' + node.interpretationModel + ')' : 'OCR heuristic' }}</dd>
+            <dt class="text-gray-400">Model input</dt><dd class="col-span-2 text-gray-700 dark:text-gray-300">{{ interpretationText(node.interpretationInput) }}</dd>
+            @if (node.description) {
+              <dt class="text-gray-400">Description</dt><dd class="col-span-2 text-gray-700 dark:text-gray-300">{{ node.description }}</dd>
+            }
+            @if (node.interpretationError) {
+              <dt class="text-gray-400">AI error</dt><dd class="col-span-2 text-warning-600 dark:text-orange-400">{{ node.interpretationError }}</dd>
+            }
+            <dt class="text-gray-400">Visits</dt><dd class="col-span-2 text-gray-700 dark:text-gray-300">{{ node.visitCount }}</dd>
+            <dt class="text-gray-400">First / last seen</dt>
+            <dd class="col-span-2 text-gray-700 dark:text-gray-300">{{ node.firstSeenAt | date: 'short' }} / {{ node.lastSeenAt | date: 'short' }}</dd>
+          </dl>
+        </div>
+      </app-component-card>
+    }
+
+    <app-component-card title="Transition History" [desc]="session() ? 'Session #' + session()!.id + ' (newest first)' : 'Start or open a session'">
+      <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 max-h-[420px] overflow-y-auto">
+        <table class="min-w-full text-sm">
+          <thead class="sticky top-0 bg-gray-50 dark:bg-gray-900">
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+              <th class="px-3 py-3">#</th>
+              <th class="px-3 py-3">From</th>
+              <th class="px-3 py-3">Action</th>
+              <th class="px-3 py-3">To</th>
+              <th class="px-3 py-3">Result</th>
+              <th class="px-3 py-3 text-right">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (step of steps(); track step.id) {
+              <tr class="border-t border-gray-100 dark:border-gray-800">
+                <td class="px-3 py-2 text-xs text-gray-400">{{ step.stepIndex }}</td>
+                <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ step.from?.label || '—' }}</td>
+                <td class="px-3 py-2 font-mono text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  {{ actionLabel(step.action) }}{{ step.autoTriggered ? '' : ' 👤' }}
+                </td>
+                <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ step.to?.label || '—' }}</td>
+                <td class="px-3 py-2">
+                  <span class="inline-flex px-2 py-0.5 rounded-full text-theme-xs font-medium" [class]="statusClass(step.status)">{{ step.status }}</span>
+                  @if (step.newScreen) { <span class="ml-1 text-theme-xs text-brand-500">new</span> }
+                  @if (step.message) { <p class="text-xs text-gray-400 mt-0.5">{{ step.message }}</p> }
+                </td>
+                <td class="px-3 py-2 text-right text-xs text-gray-400 whitespace-nowrap">{{ step.createdAt | date: 'mediumTime' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="px-4 py-10 text-center text-gray-400">No steps recorded</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </app-component-card>
+  </div>
+</div>

@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["screenName", "screenType", "description", "risk", "visibleText"],
+  "properties": {
+    "screenName": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "screenType": { "type": "string", "enum": ["HOME", "MENU", "SETTINGS", "LIST", "DETAIL", "PLAYER", "DIALOG", "KEYBOARD", "LOADING", "ERROR", "OTHER"] },
+    "description": { "type": "string", "maxLength": 300 },
+    "risk": { "type": "string", "enum": ["SAFE", "CAUTION", "DESTRUCTIVE"] },
+    "visibleText": { "type": "array", "maxItems": 15, "items": { "type": "string", "maxLength": 100 } }
+  }
+}

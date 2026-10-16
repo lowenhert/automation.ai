@@ -1,5 +1,6 @@
 package com.lowenhert.patchmanagement.core.config;
 
+import com.lowenhert.patchmanagement.core.ai.AiProviderException;
 import com.lowenhert.patchmanagement.core.auth.JwtTokenUtil;
 import com.lowenhert.patchmanagement.core.config.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,6 +53,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {
         log.warn("Unauthorized: {} [{}]", ex.getMessage(), request.getRequestURI());
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex, HttpServletRequest request) {
+        log.warn("Service unavailable: {} [{}]", ex.getMessage(), request.getRequestURI());
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AiProviderException.class)
+    public ResponseEntity<ApiErrorResponse> handleAiProvider(AiProviderException ex, HttpServletRequest request) {
+        HttpStatus status = switch (ex.getReason()) {
+            case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
+            case INVALID_OUTPUT, INVALID_RESPONSE -> HttpStatus.BAD_GATEWAY;
+            default -> HttpStatus.SERVICE_UNAVAILABLE;
+        };
+        log.warn("AI provider error {}: {} [{}]", ex.getReason(), ex.getMessage(), request.getRequestURI());
+        return buildResponse(status, ex.getMessage(), request);
     }
 
     // --- Spring Security exceptions ---

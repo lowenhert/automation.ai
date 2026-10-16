@@ -1,0 +1,79 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "summary", "preconditions", "steps", "assertions", "failureHandling", "assumptions"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+    "summary": { "type": "string", "maxLength": 600 },
+    "preconditions": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "screenId"],
+        "properties": {
+          "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "screenId": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "action", "fromScreenId", "expectedScreenId", "target", "expectedState", "timeoutMs", "onFailure"],
+        "properties": {
+          "order": { "type": "integer", "minimum": 1, "maximum": 40 },
+          "action": {
+            "type": "string",
+            "enum": ["DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT", "SELECT", "BACK", "HOME",
+                     "WAIT", "ASSERT_SCREEN", "ASSERT_TEXT_VISIBLE", "UNSUPPORTED"]
+          },
+          "requestedAction": { "type": ["string", "null"], "maxLength": 200 },
+          "fromScreenId": { "type": ["integer", "null"] },
+          "expectedScreenId": { "type": ["integer", "null"] },
+          "unknownScreenDescription": { "type": ["string", "null"], "maxLength": 200 },
+          "target": { "type": ["string", "null"], "maxLength": 200 },
+          "expectedState": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "timeoutMs": { "type": "integer", "minimum": 500, "maximum": 60000 },
+          "onFailure": { "type": "string", "enum": ["ABORT", "RETRY", "SKIP", "RECOVER_BACK", "RECOVER_HOME"] }
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["afterStep", "type", "screenId", "text", "description"],
+        "properties": {
+          "afterStep": { "type": "integer", "minimum": 1, "maximum": 40 },
+          "type": { "type": "string", "enum": ["SCREEN_IS", "TEXT_VISIBLE", "TEXT_NOT_VISIBLE"] },
+          "screenId": { "type": ["integer", "null"] },
+          "text": { "type": ["string", "null"], "maxLength": 200 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 300 }
+        }
+      }
+    },
+    "failureHandling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxRetries", "recovery", "notes"],
+      "properties": {
+        "maxRetries": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "recovery": { "type": "string", "enum": ["NONE", "BACK", "HOME"] },
+        "notes": { "type": "string", "maxLength": 300 }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "maxItems": 15,
+      "items": { "type": "string", "minLength": 1, "maxLength": 300 }
+    }
+  }
+}

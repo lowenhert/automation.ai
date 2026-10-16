@@ -21,6 +21,8 @@ public class AdbService {
             "^KEYCODE_[A-Z0-9_]+$"
     );
 
+    private static final Pattern SHELL_METACHARACTERS = Pattern.compile("[;&|`$<>()\\\\\\r\\n]");
+
     public AdbResponse connect(String ip) {
         if (!isValidIp(ip)) {
             return AdbResponse.builder().success(false).error("Invalid IP address").build();
@@ -121,6 +123,8 @@ public class AdbService {
 
     private boolean isSafeCommand(String command) {
         if (command == null || command.isBlank()) return false;
+        // The command runs in the device shell, so block chaining, substitution and redirection
+        if (SHELL_METACHARACTERS.matcher(command).find()) return false;
         // Whitelist safe commands - prevent injection
         String cmd = command.trim().toLowerCase();
         return cmd.startsWith("getprop") ||

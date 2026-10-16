@@ -2,6 +2,8 @@
 opencv-python
 numpy
 pytesseract
+Pillow
+ImageHash
 scikit-image
 torch
 torchvision

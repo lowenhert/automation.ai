@@ -52,6 +52,21 @@ export class AppSidebarComponent {
       name: "Doc Center",
       path: "/doc-center",
     },
+    {
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 2a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2H7zm0 2h10v13H7V4zm4 15h2v1h-2v-1zM9 6h6v2H9V6zm0 4h2v2H9v-2zm4 0h2v5h-2v-5zm-4 4h2v1H9v-1z" fill="currentColor"/></svg>`,
+      name: "Screen Learning",
+      path: "/screen-learning",
+    },
+    {
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M6 3a3 3 0 00-1 5.83v6.34A3 3 0 1010.83 17h2.34A3 3 0 1017 13.17V10.83A3 3 0 1013.17 7h-2.34A3 3 0 006 3zm0 2a1 1 0 110 2 1 1 0 010-2zm1 3.83A3 3 0 008.83 7h2.34a3 3 0 001.83 1.83v2.34A3 3 0 0011.17 13H8.83A3 3 0 007 14.83V8.83zM18 7a1 1 0 110 2 1 1 0 010-2zM6 16a1 1 0 110 2 1 1 0 010-2zm12-1a1 1 0 110 2 1 1 0 010-2z" fill="currentColor"/></svg>`,
+      name: "Screen Exploration",
+      path: "/screen-exploration",
+    },
+    {
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9 2a1 1 0 00-1 1v1H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2V3a1 1 0 00-1-1H9zm1 2h4v2h-4V4zM6 6h2v1a1 1 0 001 1h6a1 1 0 001-1V6h2v14H6V6zm2.3 6.3a1 1 0 011.4 0l.8.8 2.3-2.3a1 1 0 111.4 1.4l-3 3a1 1 0 01-1.4 0l-1.5-1.5a1 1 0 010-1.4zM8 17a1 1 0 011-1h6a1 1 0 110 2H9a1 1 0 01-1-1z" fill="currentColor"/></svg>`,
+      name: "AI Test Planner",
+      path: "/test-planner",
+    },
   ];
   // Others nav items
   othersItems: NavItem[] = [

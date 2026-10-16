@@ -33,6 +33,9 @@ import { TpTestHistoryComponent } from './pages/dashboard/tp-test/tp-test-histor
 import { AboutComponent } from './pages/about/about.component';
 import { InventoryManagementComponent } from './pages/inventory-management/inventory-management.component';
 import { DocCenterComponent } from './pages/doc-center/doc-center.component';
+import { ScreenLearningComponent } from './pages/screen-learning/screen-learning.component';
+import { ScreenExplorationComponent } from './pages/screen-exploration/screen-exploration.component';
+import { AiTestPlannerComponent } from './pages/ai-test-planner/ai-test-planner.component';
 import { authGuard, guestGuard } from './shared/guards/auth.guard';
 import { AdminGuard } from './shared/guards/admin.guard';
 
@@ -133,6 +136,21 @@ export const routes: Routes = [
         path:'doc-center',
         component:DocCenterComponent,
         title:'Doc Center | Tata Play Dashboard'
+      },
+      {
+        path:'screen-learning',
+        component:ScreenLearningComponent,
+        title:'Screen Learning | Tata Play Dashboard'
+      },
+      {
+        path:'screen-exploration',
+        component:ScreenExplorationComponent,
+        title:'Screen Exploration | Tata Play Dashboard'
+      },
+      {
+        path:'test-planner',
+        component:AiTestPlannerComponent,
+        title:'AI Test Planner | Tata Play Dashboard'
       },
       {
         path:'form-elements',

@@ -1,0 +1,408 @@
+<app-page-breadcrumb pageTitle="Screen Learning"></app-page-breadcrumb>
+
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-12">
+
+  <!-- Left column: ADB Connections + Capture Screen -->
+  <div class="space-y-5 xl:col-span-4">
+
+    <app-component-card title="ADB Connections" desc="Android Studio emulators, USB devices and network STBs">
+      <!-- Connect by IP -->
+      <form class="space-y-2" (ngSubmit)="connect()">
+        <div class="flex items-center gap-2">
+          <input type="text" name="host" [(ngModel)]="connectHost" placeholder="Device IP or IP:port (e.g. 192.168.1.10)"
+            [disabled]="connecting()" autocomplete="off" maxlength="253"
+            class="flex-1 min-w-0 text-sm h-[36px] px-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none disabled:opacity-60" />
+          <input type="number" name="port" [(ngModel)]="connectPort" placeholder="5555" min="1" max="65535"
+            [disabled]="connecting()"
+            class="w-[84px] text-sm h-[36px] px-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none disabled:opacity-60" />
+          <button type="submit" [disabled]="connecting()"
+            class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            @if (connecting()) {
+              <span class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+            }
+            Connect
+          </button>
+        </div>
+        @if (connectError()) {
+          <p class="text-xs text-error-600 dark:text-error-500">{{ connectError() }}</p>
+        }
+        <p class="text-xs text-gray-400">Emulators and USB devices appear automatically. Use IP connect for network STBs.</p>
+      </form>
+
+      <!-- Device list header -->
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-400">
+          Devices ({{ devices().length }})
+        </span>
+        <button type="button" (click)="refreshDevices()" [disabled]="loadingDevices()"
+          class="h-[30px] px-3 text-xs font-medium text-[#465FFF] border border-[#465FFF]/30 hover:bg-[#465FFF]/5 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed">
+          <svg class="w-3.5 h-3.5" [class.animate-spin]="loadingDevices()" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      @if (devicesError()) {
+        <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-500">
+          {{ devicesError() }}
+        </div>
+      }
+
+      @if (loadingDevices() && devices().length === 0) {
+        <div class="py-8 text-center text-sm text-gray-400">Loading devices...</div>
+      } @else if (devices().length === 0 && !devicesError()) {
+        <div class="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 py-8 text-center">
+          <svg class="mx-auto mb-2 w-8 h-8 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          <p class="text-sm text-gray-400">No devices connected</p>
+        </div>
+      } @else {
+        <ul class="space-y-3">
+          @for (device of devices(); track device.serial) {
+            <li class="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-800 dark:text-white/90 truncate">
+                    {{ device.manufacturer ? device.manufacturer + ' ' : '' }}{{ device.model || 'Unknown model' }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 font-mono truncate" [title]="device.serial">{{ device.serial }}</p>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-theme-xs font-medium bg-gray-100 text-gray-700 dark:bg-white/5 dark:text-white/80">
+                    {{ typeLabel(device.connectionType) }}
+                  </span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-theme-xs font-medium" [class]="statusClass(device.state)">
+                    {{ statusLabel(device.state) }}
+                  </span>
+                </div>
+              </div>
+
+              <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                <dt class="text-gray-400">Android</dt>
+                <dd class="text-gray-700 dark:text-gray-300">
+                  {{ device.androidVersion ? device.androidVersion + (device.sdkVersion ? ' (API ' + device.sdkVersion + ')' : '') : '—' }}
+                </dd>
+                <dt class="text-gray-400">Resolution</dt>
+                <dd class="text-gray-700 dark:text-gray-300">{{ device.resolution || '—' }}</dd>
+              </dl>
+
+              @if (device.state === 'unauthorized') {
+                <p class="mt-2 text-xs text-warning-600 dark:text-orange-400">Accept the USB debugging prompt on the device, then refresh.</p>
+              }
+              @if (device.infoError) {
+                <p class="mt-2 text-xs text-error-600 dark:text-error-500">{{ device.infoError }}</p>
+              }
+
+              <div class="mt-3 flex justify-end gap-2">
+                @if (device.state === 'device') {
+                  <button type="button" (click)="reloadInfo(device)" [disabled]="refreshingSerial() === device.serial"
+                    class="h-[28px] px-3 text-xs font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-white/5 rounded-lg transition-colors disabled:opacity-60">
+                    {{ refreshingSerial() === device.serial ? 'Loading...' : 'Reload info' }}
+                  </button>
+                }
+                @if (canDisconnect(device)) {
+                  <button type="button" (click)="disconnect(device)" [disabled]="disconnectingSerial() === device.serial"
+                    class="h-[28px] px-3 text-xs font-medium text-error-600 border border-error-200 hover:bg-error-50 dark:text-error-500 dark:border-error-500/30 dark:hover:bg-error-500/10 rounded-lg transition-colors disabled:opacity-60">
+                    {{ disconnectingSerial() === device.serial ? 'Disconnecting...' : 'Disconnect' }}
+                  </button>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </app-component-card>
+
+    <app-component-card title="Capture Screen" desc="Capture the current screen from the selected device">
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Device</label>
+        <select [ngModel]="selectedDeviceId()" (ngModelChange)="selectedDeviceId.set($event)" [disabled]="capturing() || onlineDevices().length === 0"
+          class="w-full text-sm h-[36px] px-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none disabled:opacity-60">
+          <option [ngValue]="null">{{ onlineDevices().length ? 'Select a device' : 'No online devices' }}</option>
+          @for (device of onlineDevices(); track device.serial) {
+            <option [ngValue]="device.serial">{{ device.model || device.serial }} ({{ device.serial }})</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Screen Name</label>
+        <input type="text" placeholder="e.g. Home Screen" disabled
+          class="w-full text-sm h-[36px] px-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 outline-none disabled:opacity-60" />
+      </div>
+      <button type="button" (click)="captureScreen()" [disabled]="!selectedDeviceId() || capturing()"
+        class="w-full h-[40px] text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+        @if (capturing()) {
+          <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+          Capturing...
+        } @else {
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Capture
+        }
+      </button>
+      @if (captureError()) {
+        <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-500">
+          {{ captureError() }}
+        </div>
+      }
+    </app-component-card>
+  </div>
+
+  <!-- Middle column: Screen Preview -->
+  <div class="xl:col-span-4">
+    <app-component-card title="Screen Preview" desc="Selected screen from capture or history" className="h-full">
+      @if (screenError()) {
+        <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-500">
+          {{ screenError() }}
+        </div>
+      }
+      @if (previewUrl() && selectedScreen(); as screen) {
+        @if (textRegions().length) {
+          <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+            <input type="checkbox" [checked]="showTextBoxes()" (change)="showTextBoxes.set(!showTextBoxes())"
+              class="rounded border-gray-300 text-[#465FFF] focus:ring-[#465FFF]" />
+            Show OCR text boxes
+          </label>
+        }
+        <div class="relative rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-white/[0.02] p-2 flex justify-center">
+          <div class="relative inline-block">
+            <img [src]="previewUrl()" [alt]="'Screenshot from ' + screen.deviceSerial"
+              class="block max-h-[560px] w-auto max-w-full h-auto rounded-lg" />
+            @if (showTextBoxes()) {
+              @for (region of textRegions(); track region.index) {
+                <div class="absolute border pointer-events-none transition-colors"
+                  [ngStyle]="boxStyle(region)"
+                  [class]="highlightedRegionIndex() === region.index
+                    ? 'border-2 border-[#465FFF] bg-[#465FFF]/25'
+                    : 'border-[#465FFF]/70 bg-[#465FFF]/10'"
+                  [title]="region.text"></div>
+              }
+            }
+          </div>
+          @if (loadingScreen()) {
+            <div class="absolute inset-0 flex items-center justify-center rounded-xl bg-white/60 dark:bg-gray-900/60">
+              <span class="w-8 h-8 border-2 border-gray-200 border-t-[#465FFF] rounded-full animate-spin"></span>
+            </div>
+          }
+        </div>
+        <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+          <dt class="text-gray-400">Device</dt>
+          <dd class="text-gray-700 dark:text-gray-300 truncate" [title]="screen.deviceSerial">
+            {{ screen.deviceModel || screen.deviceSerial }}
+            @if (screen.deviceModel) { <span class="font-mono text-gray-400">({{ screen.deviceSerial }})</span> }
+          </dd>
+          <dt class="text-gray-400">Resolution</dt>
+          <dd class="text-gray-700 dark:text-gray-300">{{ screen.resolution }}</dd>
+          <dt class="text-gray-400">Captured</dt>
+          <dd class="text-gray-700 dark:text-gray-300">{{ screen.capturedAt | date: 'medium' }}</dd>
+          @if (screen.sizeBytes) {
+            <dt class="text-gray-400">Size</dt>
+            <dd class="text-gray-700 dark:text-gray-300">{{ (screen.sizeBytes / 1024) | number: '1.0-0' }} KB</dd>
+          }
+          <dt class="text-gray-400">Screen ID</dt>
+          <dd class="text-gray-700 dark:text-gray-300 font-mono truncate" [title]="screen.id">{{ screen.id }}</dd>
+          <dt class="text-gray-400">Analysis</dt>
+          <dd><span class="inline-flex items-center px-2 py-0.5 rounded-full text-theme-xs font-medium" [class]="analysisBadgeClass(screen.analysisStatus)">{{ screen.analysisStatus }}</span></dd>
+          @if (screen.phash) {
+            <dt class="text-gray-400">pHash</dt>
+            <dd class="text-gray-700 dark:text-gray-300 font-mono">{{ screen.phash }}</dd>
+            <dt class="text-gray-400">dHash / aHash</dt>
+            <dd class="text-gray-700 dark:text-gray-300 font-mono truncate">{{ screen.dhash }} / {{ screen.ahash }}</dd>
+          }
+          @if (screen.sha256) {
+            <dt class="text-gray-400">SHA-256</dt>
+            <dd class="text-gray-700 dark:text-gray-300 font-mono truncate" [title]="screen.sha256">{{ screen.sha256 }}</dd>
+          }
+        </dl>
+      } @else {
+        <div class="flex items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-white/[0.02] aspect-[9/16] max-h-[560px] mx-auto">
+          <div class="text-center px-4">
+            @if (capturing() || loadingScreen()) {
+              <span class="mx-auto mb-2 block w-8 h-8 border-2 border-gray-200 border-t-[#465FFF] rounded-full animate-spin"></span>
+              <p class="text-sm text-gray-400">{{ capturing() ? 'Capturing and analyzing screen...' : 'Loading screen...' }}</p>
+            } @else {
+              <svg class="mx-auto mb-2 w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <p class="text-sm text-gray-400">Capture a screen or select one from history</p>
+            }
+          </div>
+        </div>
+      }
+    </app-component-card>
+  </div>
+
+  <!-- Right column: Detected Elements -->
+  <div class="xl:col-span-4">
+    <app-component-card title="Detected Text (OCR)" desc="Text found by Tesseract OCR, with pixel coordinates on the screenshot" className="h-full">
+      <div class="flex items-start gap-2 rounded-lg border border-blue-light-200 bg-blue-light-50 px-3 py-2 text-xs text-blue-light-700 dark:border-blue-light-500/30 dark:bg-blue-light-500/10 dark:text-blue-light-400">
+        <svg class="w-4 h-4 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>These are OCR text detections only. They are not confirmed clickable or interactive elements.</span>
+      </div>
+
+      @if (selectedScreen(); as s) {
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+          <span>{{ s.textRegionCount }} text region{{ s.textRegionCount === 1 ? '' : 's' }}</span>
+          <span>Tesseract OCR</span>
+        </div>
+      }
+
+      @if (analysisError()) {
+        <div class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-600 dark:border-warning-500/30 dark:bg-warning-500/15 dark:text-orange-400">
+          {{ analysisError() }}
+        </div>
+      }
+
+      <div class="overflow-auto max-h-[520px] rounded-xl border border-gray-200 dark:border-gray-800">
+        <table class="min-w-full text-sm">
+          <thead class="sticky top-0 bg-gray-50 dark:bg-gray-900">
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+              <th class="px-3 py-3">#</th>
+              <th class="px-3 py-3">Text</th>
+              <th class="px-3 py-3">Confidence</th>
+              <th class="px-3 py-3 whitespace-nowrap">Coordinates (x, y, w×h)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (loadingScreen() || capturing()) {
+              <tr><td colspan="4" class="px-4 py-10 text-center text-gray-400">{{ capturing() ? 'Analyzing screen...' : 'Loading...' }}</td></tr>
+            } @else {
+              @for (region of textRegions(); track region.index) {
+                <tr class="border-t border-gray-100 dark:border-gray-800 hover:bg-brand-50 dark:hover:bg-white/5 cursor-default"
+                  [class.bg-brand-50]="highlightedRegionIndex() === region.index"
+                  (mouseenter)="highlightedRegionIndex.set(region.index)" (mouseleave)="highlightedRegionIndex.set(null)">
+                  <td class="px-3 py-2 text-xs text-gray-400">{{ region.index }}</td>
+                  <td class="px-3 py-2 text-gray-800 dark:text-white/90 break-words">{{ region.text }}</td>
+                  <td class="px-3 py-2 text-xs font-medium" [class]="confidenceClass(region.confidence)">
+                    {{ region.confidence != null ? (region.confidence | number: '1.0-1') + '%' : '—' }}
+                  </td>
+                  <td class="px-3 py-2 text-xs font-mono text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                    {{ region.bbox.x }}, {{ region.bbox.y }}, {{ region.bbox.width }}×{{ region.bbox.height }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="px-4 py-10 text-center text-gray-400">
+                    {{ selectedScreen() ? 'No text detected' : 'Capture or select a screen to see detected text' }}
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </app-component-card>
+  </div>
+
+  <!-- Full width: Screen History -->
+  <div class="xl:col-span-12">
+    <app-component-card title="Screen History" desc="Previously captured screens stored in the database">
+      <form class="flex flex-col sm:flex-row sm:items-center gap-2" (ngSubmit)="searchHistory()">
+        <div class="relative flex-1 sm:max-w-[360px]">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" name="search" [(ngModel)]="searchInput" placeholder="Search detected text..." maxlength="100"
+            class="w-full text-sm h-[36px] pl-9 pr-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none" />
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="submit" [disabled]="loadingHistory()"
+            class="h-[36px] px-4 text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors disabled:opacity-60">
+            Search
+          </button>
+          @if (activeSearch()) {
+            <button type="button" (click)="clearSearch()"
+              class="h-[36px] px-3 text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-white/5 rounded-lg transition-colors">
+              Clear
+            </button>
+          }
+          <button type="button" (click)="loadHistory(historyPage())" [disabled]="loadingHistory()" title="Refresh"
+            class="h-[36px] w-[36px] flex items-center justify-center text-[#465FFF] border border-[#465FFF]/30 hover:bg-[#465FFF]/5 rounded-lg transition-colors disabled:opacity-60">
+            <svg class="w-4 h-4" [class.animate-spin]="loadingHistory()" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+        @if (activeSearch()) {
+          <span class="text-xs text-gray-500 dark:text-gray-400 sm:ml-auto">
+            {{ history()?.totalElements ?? 0 }} result{{ history()?.totalElements === 1 ? '' : 's' }} for "{{ activeSearch() }}"
+          </span>
+        }
+      </form>
+
+      @if (historyError()) {
+        <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-500">
+          {{ historyError() }}
+        </div>
+      }
+
+      <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 dark:bg-white/[0.02]">
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+              <th class="px-4 py-3">Captured At</th>
+              <th class="px-4 py-3">Device</th>
+              <th class="px-4 py-3">Resolution</th>
+              <th class="px-4 py-3">Detected Text</th>
+              <th class="px-4 py-3">Analysis</th>
+              <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (loadingHistory() && !history()) {
+              <tr><td colspan="6" class="px-4 py-10 text-center text-gray-400">Loading screen history...</td></tr>
+            } @else {
+              @for (item of history()?.content ?? []; track item.id) {
+                <tr class="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/[0.02]"
+                  [class.bg-brand-50]="selectedScreen()?.id === item.id">
+                  <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ item.capturedAt | date: 'medium' }}</td>
+                  <td class="px-4 py-3">
+                    <p class="text-gray-800 dark:text-white/90">{{ item.deviceModel || '—' }}</p>
+                    <p class="text-xs font-mono text-gray-400">{{ item.deviceSerial }}</p>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ item.resolution }}</td>
+                  <td class="px-4 py-3 max-w-[420px]">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ item.textRegionCount }} OCR region{{ item.textRegionCount === 1 ? '' : 's' }}</p>
+                    @if (item.matchedTexts?.length) {
+                      <div class="mt-1 flex flex-wrap gap-1">
+                        @for (match of item.matchedTexts; track $index) {
+                          <span class="inline-flex px-2 py-0.5 rounded text-theme-xs bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">{{ match }}</span>
+                        }
+                      </div>
+                    } @else if (item.textPreview) {
+                      <p class="text-gray-700 dark:text-gray-300 truncate" [title]="item.textPreview">{{ item.textPreview }}</p>
+                    }
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-theme-xs font-medium" [class]="analysisBadgeClass(item.analysisStatus)">{{ item.analysisStatus }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <button type="button" (click)="selectScreen(item.id)"
+                      class="h-[30px] px-3 text-xs font-medium text-[#465FFF] border border-[#465FFF]/30 hover:bg-[#465FFF]/5 rounded-lg transition-colors">
+                      View
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="px-4 py-10 text-center text-gray-400">
+                    {{ activeSearch() ? 'No screens contain that text' : 'No screen history yet' }}
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (history(); as h) {
+        @if (h.totalPages > 1) {
+          <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+            <span>Page {{ h.page + 1 }} of {{ h.totalPages }} · {{ h.totalElements }} screens</span>
+            <div class="flex items-center gap-2">
+              <button type="button" (click)="loadHistory(h.page - 1)" [disabled]="h.page === 0 || loadingHistory()"
+                class="h-[32px] px-3 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed">
+                Previous
+              </button>
+              <button type="button" (click)="loadHistory(h.page + 1)" [disabled]="h.page + 1 >= h.totalPages || loadingHistory()"
+                class="h-[32px] px-3 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed">
+                Next
+              </button>
+            </div>
+          </div>
+        }
+      }
+    </app-component-card>
+  </div>
+</div>

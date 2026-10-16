@@ -49,6 +49,10 @@ Thumbs.db
 target/
 build/
 
+# Screen Learning captured screenshots
+data/screen-captures/
+data/executions/
+
 # Logs and temporary files
 *.log
 *.tmp

@@ -1,0 +1,219 @@
+<app-page-breadcrumb pageTitle="AI Test Planner"></app-page-breadcrumb>
+
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-12">
+
+  <!-- Left: goal form + drafts -->
+  <div class="space-y-5 xl:col-span-4">
+    <app-component-card title="New Test Plan" desc="Describe what to test; the plan is grounded in explored screens">
+      <form class="space-y-3" (ngSubmit)="generate()">
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Testing goal</label>
+          <textarea name="goal" [(ngModel)]="goal" rows="4" [maxlength]="goalMax" [disabled]="generating()"
+            placeholder="e.g. From Settings, open Network & internet and verify Airplane mode is listed"
+            class="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-[#465FFF] focus:ring-1 focus:ring-[#465FFF] outline-none"></textarea>
+          <p class="text-xs text-gray-400 text-right">{{ goal.length }} / {{ goalMax }}</p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Device (screen knowledge)</label>
+          <input name="device" list="planner-devices" [ngModel]="deviceId" (ngModelChange)="onDeviceChange($event)" [disabled]="generating()"
+            placeholder="emulator-5554"
+            class="w-full text-sm h-[36px] px-3 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 outline-none" />
+          <datalist id="planner-devices">
+            @for (d of devices(); track d.serial) { <option [value]="d.serial">{{ d.model || d.serial }}</option> }
+          </datalist>
+          <p class="mt-1 text-xs text-gray-400">{{ screens().length }} explored screen{{ screens().length === 1 ? '' : 's' }} known for this device</p>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="col-span-2 text-xs text-gray-500 dark:text-gray-400">Start screen
+            <select name="start" [(ngModel)]="startScreenId" [disabled]="generating() || !screens().length"
+              class="mt-1 w-full text-sm h-[34px] px-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+              <option [ngValue]="null">Not specified</option>
+              @for (s of screens(); track s.id) { <option [ngValue]="s.id">{{ s.label }} (#{{ s.id }})</option> }
+            </select>
+          </label>
+          <label class="text-xs text-gray-500 dark:text-gray-400">Max steps
+            <input type="number" name="maxSteps" [(ngModel)]="maxSteps" min="1" max="40" [disabled]="generating()"
+              class="mt-1 w-full text-sm h-[34px] px-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90" />
+          </label>
+        </div>
+        <button type="submit" [disabled]="!canGenerate()"
+          class="w-full h-[40px] text-sm font-medium text-white bg-[#465FFF] hover:bg-[#3A4FE0] rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+          @if (generating()) {
+            <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span> Generating with AI...
+          } @else { Generate draft plan }
+        </button>
+        @if (generateError()) {
+          <div class="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-500">{{ generateError() }}</div>
+        }
+        <p class="text-xs text-gray-400">Plans are saved as drafts for review. Nothing is executed on the device.</p>
+      </form>
+    </app-component-card>
+
+    <app-component-card title="Plans">
+      <div class="flex gap-1 text-xs">
+        @for (f of [null, 'DRAFT', 'APPROVED', 'REJECTED']; track $index) {
+          <button type="button" (click)="setFilter($any(f))"
+            class="px-2.5 h-7 rounded-md border transition-colors"
+            [ngClass]="statusFilter() === f ? 'bg-[#465FFF] text-white border-[#465FFF]' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'">
+            {{ f ?? 'All' }}
+          </button>
+        }
+      </div>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800 max-h-[460px] overflow-y-auto -mx-1">
+        @for (p of plans(); track p.id) {
+          <li>
+            <button type="button" (click)="open(p.id)" class="w-full text-left px-1 py-2.5 hover:bg-gray-50 dark:hover:bg-white/[0.03] rounded"
+              [class.bg-brand-50]="selected()?.id === p.id">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-sm font-medium text-gray-800 dark:text-white/90 truncate">#{{ p.id }} {{ p.title }}</span>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-theme-xs font-medium shrink-0" [class]="statusClass(p.status)">{{ p.status }}</span>
+              </div>
+              <p class="text-xs text-gray-400 truncate">{{ p.goal }}</p>
+              <p class="text-xs text-gray-400">
+                {{ p.stepCount }} steps
+                @if (p.errorFlags) { · <span class="text-error-600">{{ p.errorFlags }} errors</span> }
+                @if (p.warningFlags) { · <span class="text-warning-600">{{ p.warningFlags }} warnings</span> }
+                · {{ p.createdAt | date: 'short' }}
+              </p>
+            </button>
+          </li>
+        } @empty {
+          <li class="py-6 text-center text-sm text-gray-400">{{ loadingPlans() ? 'Loading...' : 'No plans yet' }}</li>
+        }
+      </ul>
+    </app-component-card>
+  </div>
+
+  <!-- Right: plan detail -->
+  <div class="space-y-5 xl:col-span-8">
+    @if (selected(); as p) {
+      <app-component-card [title]="'#' + p.id + ' ' + p.title" [desc]="p.plan.summary">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="inline-flex px-2 py-0.5 rounded-full font-medium" [class]="statusClass(p.status)">{{ p.status }}</span>
+          <span class="text-gray-500 dark:text-gray-400">{{ p.deviceSerial }} · {{ p.model }} · {{ p.attempts }} attempt{{ p.attempts === 1 ? '' : 's' }}</span>
+          <span class="text-gray-500 dark:text-gray-400">· grounded in {{ p.knowledge.screens.length }} of {{ p.knowledge.totalScreens }} screens, {{ p.knowledge.transitionsProvided }} transitions</span>
+        </div>
+        <div class="rounded-lg border border-blue-light-200 bg-blue-light-50 px-3 py-2 text-xs text-blue-light-700 dark:border-blue-light-500/30 dark:bg-blue-light-500/10 dark:text-blue-light-400">
+          {{ p.note }} <strong>Goal:</strong> {{ p.goal }}
+        </div>
+
+        @if (planFlags().length || p.errorFlags || p.warningFlags) {
+          <div class="space-y-1">
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Review flags ({{ p.errorFlags }} errors, {{ p.warningFlags }} warnings)</p>
+            @for (f of p.flags; track $index) {
+              <div class="flex items-start gap-2 text-xs">
+                <span class="inline-flex px-1.5 py-0.5 rounded font-medium shrink-0" [class]="severityClass(f.severity)">{{ f.severity }}</span>
+                <span class="text-gray-700 dark:text-gray-300">
+                  <span class="font-mono">{{ f.type }}</span>{{ f.stepOrder ? ' · step ' + f.stepOrder : '' }} — {{ f.message }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+
+        @if (p.plan.preconditions.length) {
+          <div>
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preconditions</p>
+            <ul class="list-disc pl-5 text-sm text-gray-700 dark:text-gray-300">
+              @for (c of p.plan.preconditions; track $index) {
+                <li>{{ c.description }} <span class="text-xs text-gray-400">{{ c.screenId != null ? '— ' + screenName(c.screenId) : '' }}</span></li>
+              }
+            </ul>
+          </div>
+        }
+
+        <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-white/[0.02]">
+              <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                <th class="px-3 py-2.5">#</th>
+                <th class="px-3 py-2.5">Action / target</th>
+                <th class="px-3 py-2.5">From → expected screen</th>
+                <th class="px-3 py-2.5">Expected state</th>
+                <th class="px-3 py-2.5">Timeout / on failure</th>
+                <th class="px-3 py-2.5">Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of p.plan.steps; track s.order) {
+                <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
+                  <td class="px-3 py-2 text-xs text-gray-400">{{ s.order }}</td>
+                  <td class="px-3 py-2">
+                    <span class="font-mono text-xs" [class.text-error-600]="s.action === 'UNSUPPORTED'">{{ s.action }}</span>
+                    @if (s.target) { <p class="text-gray-800 dark:text-white/90">"{{ s.target }}"</p> }
+                    @if (s.requestedAction) { <p class="text-xs text-error-600">Needs: {{ s.requestedAction }}</p> }
+                    @for (f of flagsByStep().get(s.order) ?? []; track $index) {
+                      <p class="text-xs mt-0.5" [ngClass]="f.severity === 'ERROR' ? 'text-error-600' : 'text-warning-600 dark:text-orange-400'">⚠ {{ f.type }}</p>
+                    }
+                  </td>
+                  <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">
+                    {{ screenName(s.fromScreenId) }}<br />→ {{ screenName(s.expectedScreenId, s.unknownScreenDescription) }}
+                  </td>
+                  <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ s.expectedState }}</td>
+                  <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ s.timeoutMs / 1000 }}s<br />{{ s.onFailure }}</td>
+                  <td class="px-3 py-2">
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-theme-xs font-medium" [class]="evidenceClass(evidence(s))">{{ evidenceLabel(evidence(s)) }}</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="font-medium text-gray-700 dark:text-gray-300 mb-1">Assertions</p>
+            <ul class="space-y-1">
+              @for (a of p.plan.assertions; track $index) {
+                <li class="text-gray-700 dark:text-gray-300">
+                  <span class="font-mono text-xs">After step {{ a.afterStep }} · {{ a.type }}</span>
+                  — {{ a.description }}
+                  @if (a.text) { <span class="text-xs text-gray-500">("{{ a.text }}")</span> }
+                  @if (a.screenId != null) { <span class="text-xs text-gray-500">[{{ screenName(a.screenId) }}]</span> }
+                </li>
+              } @empty { <li class="text-gray-400">None</li> }
+            </ul>
+          </div>
+          <div>
+            <p class="font-medium text-gray-700 dark:text-gray-300 mb-1">Failure handling</p>
+            <p class="text-gray-700 dark:text-gray-300">Retries: {{ p.plan.failureHandling.maxRetries }} · Recovery: {{ p.plan.failureHandling.recovery }}</p>
+            @if (p.plan.failureHandling.notes) { <p class="text-xs text-gray-500">{{ p.plan.failureHandling.notes }}</p> }
+            @if (p.plan.assumptions.length) {
+              <p class="font-medium text-gray-700 dark:text-gray-300 mt-3 mb-1">Model assumptions (unverified)</p>
+              <ul class="list-disc pl-5 text-xs text-gray-600 dark:text-gray-400">
+                @for (a of p.plan.assumptions; track $index) { <li>{{ a }}</li> }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+          <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Review</p>
+          @if (p.reviewedBy) {
+            <p class="text-xs text-gray-500">Last reviewed by {{ p.reviewedBy }} on {{ p.reviewedAt | date: 'medium' }}</p>
+          }
+          <textarea name="reviewNotes" [(ngModel)]="reviewNotes" rows="2" maxlength="1000" placeholder="Review notes (optional)"
+            class="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg bg-transparent text-gray-800 dark:border-gray-700 dark:text-white/90 outline-none"></textarea>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" (click)="review('APPROVED')" [disabled]="reviewing() || p.errorFlags > 0"
+              [title]="p.errorFlags > 0 ? 'Resolve error flags before approving' : ''"
+              class="h-9 px-4 text-sm font-medium text-white bg-success-600 hover:bg-success-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+            <button type="button" (click)="review('REJECTED')" [disabled]="reviewing()"
+              class="h-9 px-4 text-sm font-medium text-error-600 border border-error-200 hover:bg-error-50 dark:border-error-500/30 rounded-lg disabled:opacity-50">Reject</button>
+            @if (p.status !== 'DRAFT') {
+              <button type="button" (click)="review('DRAFT')" [disabled]="reviewing()"
+                class="h-9 px-4 text-sm font-medium text-gray-600 border border-gray-200 dark:border-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50">Back to draft</button>
+            }
+          </div>
+          @if (p.errorFlags > 0) {
+            <p class="text-xs text-error-600">This plan has error flags (unsupported actions or destructive steps) and cannot be approved.</p>
+          }
+        </div>
+      </app-component-card>
+    } @else {
+      <app-component-card title="Plan">
+        <div class="py-16 text-center text-sm text-gray-400">{{ loadingPlan() ? 'Loading plan...' : 'Generate a plan or select one from the list' }}</div>
+      </app-component-card>
+    }
+  </div>
+</div>

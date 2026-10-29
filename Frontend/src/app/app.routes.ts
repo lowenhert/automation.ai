@@ -36,6 +36,7 @@ import { DocCenterComponent } from './pages/doc-center/doc-center.component';
 import { ScreenLearningComponent } from './pages/screen-learning/screen-learning.component';
 import { ScreenExplorationComponent } from './pages/screen-exploration/screen-exploration.component';
 import { AiTestPlannerComponent } from './pages/ai-test-planner/ai-test-planner.component';
+import { AgenticAutomationComponent } from './pages/agentic-automation/agentic-automation.component';
 import { authGuard, guestGuard } from './shared/guards/auth.guard';
 import { AdminGuard } from './shared/guards/admin.guard';
 
@@ -151,6 +152,11 @@ export const routes: Routes = [
         path:'test-planner',
         component:AiTestPlannerComponent,
         title:'AI Test Planner | Tata Play Dashboard'
+      },
+      {
+        path:'agentic-automation',
+        component:AgenticAutomationComponent,
+        title:'Agentic Automation | Tata Play Dashboard'
       },
       {
         path:'form-elements',

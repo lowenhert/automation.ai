@@ -22,6 +22,8 @@ build/
 # Environment and local config
 src/environments/environment*.ts
 *.local.*
+*.local.properties
+application-local.properties
 *.env
 .env.*
 

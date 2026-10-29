@@ -32,8 +32,10 @@ public class AiTestPlanController {
         return ResponseEntity.ok(planner.get(id));
     }
 
-    @PostMapping("/{id}/review")
-    public ResponseEntity<PlanDetail> review(@PathVariable Long id, @RequestBody ReviewRequest request, Authentication auth) {
-        return ResponseEntity.ok(planner.review(id, request, auth != null ? auth.getName() : null));
+    @PostMapping("/{id}/execute")
+    public ResponseEntity<PlanDetail> execute(@PathVariable Long id,
+                                              @RequestBody(required = false) ExecutePlanRequest request,
+                                              Authentication auth) {
+        return ResponseEntity.ok(planner.execute(id, request, auth != null ? auth.getName() : null));
     }
 }

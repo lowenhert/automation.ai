@@ -5,7 +5,7 @@ import lombok.*;
 
 import java.time.Instant;
 
-/** A generated test plan awaiting human review. Plans are never executed by this module. */
+/** A generated test plan. Plans can be executed directly or scheduled. */
 @Entity
 @Table(name = "ai_test_plans",
         indexes = {
@@ -19,11 +19,14 @@ import java.time.Instant;
 @Builder
 public class AiTestPlan {
 
-    public enum Status { DRAFT, APPROVED, REJECTED }
+    public enum Status { DRAFT, APPROVED, REJECTED, EXECUTING, EXECUTED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "execution_id")
+    private Long executionId;
 
     @Column(name = "title", nullable = false, length = 150)
     private String title;

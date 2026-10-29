@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -8,6 +8,7 @@ import { ComponentCardComponent } from '../../shared/components/common/component
 import { AdbDevice, ScreenLearningAdbService } from '../../shared/services/screen-learning-adb.service';
 import { ScreenExplorationService, ScreenGraphNode } from '../../shared/services/screen-exploration.service';
 import { NotificationService } from '../../shared/services/notification.service';
+import { TestLibraryService } from '../../shared/services/test-library.service';
 import {
   AiTestPlannerService, Evidence, PlanDetail, PlanFlag, PlanStatus, PlanStep, PlanSummary
 } from '../../shared/services/ai-test-planner.service';
@@ -18,11 +19,12 @@ import {
   imports: [FormsModule, DatePipe, NgClass, PageBreadcrumbComponent, ComponentCardComponent],
   templateUrl: './ai-test-planner.component.html'
 })
-export class AiTestPlannerComponent implements OnInit {
+export class AiTestPlannerComponent implements OnInit, OnDestroy {
   private planner = inject(AiTestPlannerService);
   private adb = inject(ScreenLearningAdbService);
   private exploration = inject(ScreenExplorationService);
   private notifications = inject(NotificationService);
+  private testLibrary = inject(TestLibraryService);
 
   devices = signal<AdbDevice[]>([]);
   screens = signal<ScreenGraphNode[]>([]);
@@ -32,6 +34,7 @@ export class AiTestPlannerComponent implements OnInit {
   startScreenId: number | null = null;
   maxSteps = 15;
   generating = signal(false);
+  executing = signal(false);
   generateError = signal<string | null>(null);
 
   plans = signal<PlanSummary[]>([]);
@@ -40,8 +43,13 @@ export class AiTestPlannerComponent implements OnInit {
 
   selected = signal<PlanDetail | null>(null);
   loadingPlan = signal(false);
-  reviewNotes = '';
-  reviewing = signal(false);
+
+  // Execution tracking & live logs
+  executionLogs = signal<string>('');
+  executionStatus = signal<string | null>(null);
+  showLogs = signal<boolean>(true);
+  private logOffset = 0;
+  private logPollTimer: any = null;
 
   screenLabels = computed(() => new Map((this.selected()?.knowledge?.screens ?? []).map(s => [s.id, s.label])));
   flagsByStep = computed(() => {
@@ -69,6 +77,10 @@ export class AiTestPlannerComponent implements OnInit {
     this.loadPlans();
   }
 
+  ngOnDestroy(): void {
+    this.stopLogPolling();
+  }
+
   onDeviceChange(serial: string): void {
     this.deviceId = serial;
     this.startScreenId = null;
@@ -89,19 +101,75 @@ export class AiTestPlannerComponent implements OnInit {
     if (!this.canGenerate()) return;
     this.generating.set(true);
     this.generateError.set(null);
+    this.stopLogPolling();
+    this.executionLogs.set('');
+
     this.planner.generate({
       goal: this.goal.trim(), deviceId: this.deviceId.trim(), startScreenId: this.startScreenId, maxSteps: this.maxSteps
     }).pipe(finalize(() => this.generating.set(false)))
       .subscribe({
         next: plan => {
           this.selected.set(plan);
-          this.reviewNotes = '';
-          this.notifications.showSuccess('Draft plan saved',
+          this.notifications.showSuccess('Plan generated',
             `${plan.stepCount} steps · ${plan.errorFlags} errors · ${plan.warningFlags} warnings`);
           this.loadPlans();
+          if (plan.executionId) {
+            this.trackExecution(plan.executionId);
+          }
         },
         error: err => this.generateError.set(this.errorMessage(err))
       });
+  }
+
+  execute(planId: number): void {
+    this.executing.set(true);
+    this.stopLogPolling();
+    this.executionLogs.set('');
+
+    this.planner.execute(planId, { deviceId: this.deviceId.trim() || undefined })
+      .pipe(finalize(() => this.executing.set(false)))
+      .subscribe({
+        next: updated => {
+          this.selected.set(updated);
+          this.notifications.showSuccess('Execution started', `Plan #${updated.id} execution initiated`);
+          this.loadPlans();
+          if (updated.executionId) {
+            this.trackExecution(updated.executionId);
+          }
+        },
+        error: err => this.notifications.showError('Execution failed', this.errorMessage(err))
+      });
+  }
+
+  private trackExecution(executionId: number): void {
+    this.stopLogPolling();
+    this.logOffset = 0;
+    this.executionLogs.set('');
+    this.executionStatus.set('RUNNING');
+
+    this.logPollTimer = setInterval(() => {
+      this.testLibrary.executionLog(executionId, this.logOffset).subscribe({
+        next: chunk => {
+          if (chunk.text) {
+            this.executionLogs.update(prev => prev + chunk.text);
+            this.logOffset = chunk.nextOffset;
+          }
+          this.executionStatus.set(chunk.status);
+          if (chunk.complete) {
+            this.stopLogPolling();
+            this.loadPlans();
+          }
+        },
+        error: () => this.stopLogPolling()
+      });
+    }, 1000);
+  }
+
+  private stopLogPolling(): void {
+    if (this.logPollTimer) {
+      clearInterval(this.logPollTimer);
+      this.logPollTimer = null;
+    }
   }
 
   loadPlans(): void {
@@ -118,29 +186,18 @@ export class AiTestPlannerComponent implements OnInit {
 
   open(id: number): void {
     this.loadingPlan.set(true);
+    this.stopLogPolling();
+    this.executionLogs.set('');
+
     this.planner.get(id).pipe(finalize(() => this.loadingPlan.set(false))).subscribe({
       next: plan => {
         this.selected.set(plan);
-        this.reviewNotes = plan.reviewNotes ?? '';
+        if (plan.executionId) {
+          this.trackExecution(plan.executionId);
+        }
       },
       error: err => this.notifications.showError('Could not load plan', this.errorMessage(err))
     });
-  }
-
-  review(decision: PlanStatus): void {
-    const plan = this.selected();
-    if (!plan) return;
-    this.reviewing.set(true);
-    this.planner.review(plan.id, decision, this.reviewNotes.trim())
-      .pipe(finalize(() => this.reviewing.set(false)))
-      .subscribe({
-        next: updated => {
-          this.selected.set(updated);
-          this.notifications.showSuccess('Review saved', `Plan #${updated.id} is now ${updated.status}`);
-          this.loadPlans();
-        },
-        error: err => this.notifications.showError('Review failed', this.errorMessage(err))
-      });
   }
 
   screenName(id: number | null, unknownDescription?: string | null): string {
@@ -179,6 +236,8 @@ export class AiTestPlannerComponent implements OnInit {
 
   statusClass(status: PlanStatus): string {
     switch (status) {
+      case 'EXECUTING': return 'bg-brand-50 text-[#465FFF] dark:bg-[#465FFF]/15 dark:text-blue-400 border border-[#465FFF]/30';
+      case 'EXECUTED': return 'bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500';
       case 'APPROVED': return 'bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500';
       case 'REJECTED': return 'bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500';
       default: return 'bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400';

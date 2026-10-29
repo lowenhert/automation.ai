@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResponse } from './screen-history.service';
 
-export type PlanStatus = 'DRAFT' | 'APPROVED' | 'REJECTED';
+export type PlanStatus = 'DRAFT' | 'APPROVED' | 'REJECTED' | 'EXECUTING' | 'EXECUTED';
 export type PlanAction = 'DPAD_UP' | 'DPAD_DOWN' | 'DPAD_LEFT' | 'DPAD_RIGHT' | 'SELECT' | 'BACK' | 'HOME'
   | 'WAIT' | 'ASSERT_SCREEN' | 'ASSERT_TEXT_VISIBLE' | 'UNSUPPORTED';
 export type Evidence = 'OBSERVED' | 'NOT_OBSERVED' | 'UNKNOWN' | 'NOT_APPLICABLE';
@@ -66,6 +66,7 @@ export interface PlanDetail extends PlanSummary {
   reviewedAt?: string;
   reviewNotes?: string;
   note: string;
+  executionId?: number | null;
 }
 
 export interface GeneratePlanRequest {
@@ -94,7 +95,7 @@ export class AiTestPlannerService {
     return this.http.get<PlanDetail>(`${this.API_URL}/${id}`);
   }
 
-  review(id: number, decision: PlanStatus, notes?: string): Observable<PlanDetail> {
-    return this.http.post<PlanDetail>(`${this.API_URL}/${id}/review`, { decision, notes: notes || null });
+  execute(id: number, request?: { deviceId?: string; timeoutSeconds?: number }): Observable<PlanDetail> {
+    return this.http.post<PlanDetail>(`${this.API_URL}/${id}/execute`, request ?? {});
   }
 }

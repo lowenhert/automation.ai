@@ -1,58 +1,46 @@
 package com.lowenhert.patchmanagement.core.ai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-/** Verifies Ollama connectivity, model availability and (optionally) that the model can generate. */
+/**
+ * Verifies Amazon Bedrock Mantle connectivity and that the configured model is reachable.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiHealthService {
 
-    private final OllamaClient client;
-    private final OllamaProperties properties;
+    private final BedrockClient client;
+    private final BedrockProperties properties;
 
     public AiHealth check(boolean probeGeneration) {
         long started = System.nanoTime();
         AiHealth.AiHealthBuilder health = AiHealth.builder()
-                .provider("ollama")
+                .provider("amazon-bedrock-mantle")
                 .baseUrl(properties.getBaseUrl().toString())
-                .model(properties.getModel());
-
-        try {
-            health.ollamaVersion(client.version()).reachable(true);
-        } catch (AiProviderException e) {
-            return down(health, started, e);
-        }
-
-        try {
-            JsonNode show = client.showModel(properties.getModel());
-            List<String> capabilities = new ArrayList<>();
-            show.path("capabilities").forEach(c -> capabilities.add(c.asText()));
-            health.modelAvailable(true).capabilities(capabilities);
-        } catch (AiProviderException e) {
-            health.modelAvailable(false);
-            return down(health, started, e);
-        }
+                .model(properties.getModel())
+                .providerVersion(client.version())
+                .reachable(true);
 
         if (probeGeneration) {
             health.generationChecked(true);
             try {
-                String reply = client.chat(List.of(OllamaClient.ChatMessage.user("Reply with the single word OK.")),
-                        null, Map.of("temperature", 0, "num_predict", 8)).message().content();
-                health.generationOk(reply != null && !reply.isBlank());
+                String reply = client.probeModel();
+                health.generationOk(reply != null && !reply.isBlank())
+                      .modelAvailable(true)
+                      .capabilities(List.of("text", "chat"));
             } catch (AiProviderException e) {
-                health.generationOk(false);
+                health.generationOk(false).modelAvailable(false);
                 return down(health, started, e);
             }
+        } else {
+            health.modelAvailable(true).capabilities(List.of("text", "chat"));
         }
 
         return health.status("UP").latencyMs(elapsedMs(started)).build();
@@ -72,7 +60,7 @@ public class AiHealthService {
 
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record AiHealth(String status, String provider, String baseUrl, String model, String ollamaVersion,
+    public record AiHealth(String status, String provider, String baseUrl, String model, String providerVersion,
                            boolean reachable, boolean modelAvailable, List<String> capabilities,
                            Boolean generationChecked, Boolean generationOk, long latencyMs, Error error) {
 

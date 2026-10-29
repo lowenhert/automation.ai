@@ -34,19 +34,19 @@ class StructuredChatServiceTest {
             [{"step": 1, "action": "click", "target": "Settings icon", "description": "Open settings"}]
             ```""";
 
-    private OllamaClient client;
+    private BedrockClient client;
     private StructuredChatService service;
     private JsonNode schema;
 
     @BeforeEach
     void setUp() throws Exception {
-        client = mock(OllamaClient.class);
+        client = mock(BedrockClient.class);
         service = new StructuredChatService(client, new JsonSchemaValidator());
         schema = new ObjectMapper().readTree(getClass().getResourceAsStream("/ai/test-plan-draft.schema.json"));
     }
 
-    private static OllamaClient.ChatResponse reply(String content) {
-        return new OllamaClient.ChatResponse("gemma4:31b-cloud", OllamaClient.ChatMessage.assistant(content), true, "stop", 1, 1, 1L);
+    private static BedrockClient.ChatResponse reply(String content) {
+        return new BedrockClient.ChatResponse(BedrockClient.ChatMessage.assistant(content), 1, 1, "stop");
     }
 
     private TestPlanDraft draft() {
@@ -136,3 +136,5 @@ class StructuredChatServiceTest {
                 new TestPlanDraft.Step(TestPlanDraft.Action.PRESS_KEY, "DPAD_DOWN", "focus moves")))).isEmpty());
     }
 }
+
+

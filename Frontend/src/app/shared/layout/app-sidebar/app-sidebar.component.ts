@@ -67,6 +67,12 @@ export class AppSidebarComponent {
       name: "AI Test Planner",
       path: "/test-planner",
     },
+    {
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v2h1a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1v2a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3v-2H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1V8a3 3 0 0 1 3-3h1V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-6 6h6v-1.5H9V16z" fill="currentColor"/></svg>`,
+      name: "Agentic Automation",
+      path: "/agentic-automation",
+      new: true
+    },
   ];
   // Others nav items
   othersItems: NavItem[] = [

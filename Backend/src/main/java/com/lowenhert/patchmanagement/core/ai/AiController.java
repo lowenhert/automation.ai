@@ -16,7 +16,7 @@ public class AiController {
     private final AiHealthService healthService;
     private final TestPlanningService testPlanningService;
 
-    /** 200 when Ollama is reachable and the model is available; 503 with diagnostics otherwise. */
+    /** 200 when Bedrock is reachable and the model is available; 503 with diagnostics otherwise. */
     @GetMapping("/health")
     public ResponseEntity<AiHealthService.AiHealth> health(@RequestParam(defaultValue = "false") boolean probe) {
         AiHealthService.AiHealth health = healthService.check(probe);
@@ -32,3 +32,4 @@ public class AiController {
     public record DraftRequest(String goal, String context) {
     }
 }
+

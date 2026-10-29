@@ -18,10 +18,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** HTTP contract of /api/ai/test-plans with Ollama unreachable (port 9). */
+/** HTTP contract of /api/ai/test-plans with Bedrock unreachable (port 9). */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:planner-api;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
-        "app.ai.ollama.base-url=http://127.0.0.1:9"
+        "app.ai.bedrock.base-url=http://127.0.0.1:9"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("h2")
@@ -63,7 +63,7 @@ class AiTestPlanApiTest {
         mvc.perform(post("/api/ai/test-plans").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"goal\":\"Open settings and check Wi-Fi\",\"deviceId\":\"emulator-5554\"}"))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.message", containsString("Cannot connect to Ollama")));
+                .andExpect(jsonPath("$.message", containsString("Cannot connect to Bedrock")));
     }
 
     @Test
@@ -79,3 +79,4 @@ class AiTestPlanApiTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.content").isArray());
     }
 }
+

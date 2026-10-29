@@ -18,6 +18,8 @@ import java.util.regex.Pattern;
 /**
  * Requests JSON from the LLM and returns it only after strict parsing, JSON Schema validation and
  * application-level validation. Raw model output is never returned to callers.
+ *
+ * Uses Amazon Bedrock (Converse API) via BedrockClient.
  */
 @Slf4j
 @Service
@@ -29,7 +31,7 @@ public class StructuredChatService {
     private static final Pattern FENCED = Pattern.compile("```(?:json)?\\s*(.*?)\\s*```", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
     private static final Map<String, Object> DETERMINISTIC = Map.of("temperature", 0);
 
-    private final OllamaClient client;
+    private final BedrockClient client;
     private final JsonSchemaValidator schemaValidator;
     // Strict: unknown fields, trailing tokens, duplicate keys or wrong types make the output invalid
     private final ObjectMapper strictMapper = JsonMapper.builder()
@@ -39,7 +41,7 @@ public class StructuredChatService {
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
             .build();
 
-    public StructuredChatService(OllamaClient client, JsonSchemaValidator schemaValidator) {
+    public StructuredChatService(BedrockClient client, JsonSchemaValidator schemaValidator) {
         this.client = client;
         this.schemaValidator = schemaValidator;
     }
@@ -49,8 +51,7 @@ public class StructuredChatService {
     }
 
     /**
-     * @param schema    JSON Schema sent as Ollama {@code format}, included in the system prompt
-     *                  (some models, including cloud models, ignore {@code format}) and enforced on the response
+     * @param schema    JSON Schema included in the system prompt and enforced on the response
      * @param validator returns application-level errors; empty means valid
      */
     public <T> T chatJson(String systemPrompt, String userPrompt, JsonNode schema, Class<T> type,
@@ -58,7 +59,7 @@ public class StructuredChatService {
         return chatJson(systemPrompt, userPrompt, List.of(), schema, type, validator);
     }
 
-    /** Same as above, attaching base64 images to the user message. Callers must verify the model actually used them. */
+    /** Same as above, attaching base64 images to the user message. */
     public <T> T chatJson(String systemPrompt, String userPrompt, List<String> images, JsonNode schema, Class<T> type,
                           Function<T, List<String>> validator) {
         return chatJsonDetailed(systemPrompt, userPrompt, images, schema, type, validator, DEFAULT_MAX_ATTEMPTS).value();
@@ -71,10 +72,10 @@ public class StructuredChatService {
         }
         String system = systemPrompt + "\n\nRespond with a single JSON object only, no Markdown, no explanation. "
                 + "It must validate against this JSON Schema:\n" + schema.toString();
-        List<OllamaClient.ChatMessage> messages = new ArrayList<>(List.of(
-                OllamaClient.ChatMessage.system(system),
-                images.isEmpty() ? OllamaClient.ChatMessage.user(userPrompt)
-                        : OllamaClient.ChatMessage.userWithImages(userPrompt, images)));
+        List<BedrockClient.ChatMessage> messages = new ArrayList<>(List.of(
+                BedrockClient.ChatMessage.system(system),
+                images.isEmpty() ? BedrockClient.ChatMessage.user(userPrompt)
+                        : BedrockClient.ChatMessage.userWithImages(userPrompt, images)));
 
         List<String> errors = List.of();
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -87,8 +88,8 @@ public class StructuredChatService {
             errors = parsed.errors();
             log.warn("LLM output rejected (attempt {}/{}): {}", attempt, maxAttempts, errors);
             // Repair round: show the model its own output and the exact problems
-            messages.add(OllamaClient.ChatMessage.assistant(truncate(content, 4000)));
-            messages.add(OllamaClient.ChatMessage.user("Your previous response was invalid: " + String.join("; ", errors)
+            messages.add(BedrockClient.ChatMessage.assistant(truncate(content, 4000)));
+            messages.add(BedrockClient.ChatMessage.user("Your previous response was invalid: " + String.join("; ", errors)
                     + ". Respond again with only the corrected JSON object."));
         }
         throw new AiProviderException(AiProviderException.Reason.INVALID_OUTPUT,

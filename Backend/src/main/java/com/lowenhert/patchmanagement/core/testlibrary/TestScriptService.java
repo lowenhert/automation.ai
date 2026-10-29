@@ -163,6 +163,21 @@ public class TestScriptService {
         return detail(scriptRepository.save(script));
     }
 
+    /** Validates and, if valid, immediately approves the script for agentic/automated execution. */
+    public ScriptDetail validateAndAutoApprove(Long id, String username) {
+        validate(id);
+        TestScript script = find(id);
+        if (script.getContentHash() != null && script.getContentHash().equals(script.getValidatedHash())) {
+            script.setStatus(TestScript.Status.APPROVED);
+            script.setApprovedHash(script.getContentHash());
+            script.setApprovedBy(username != null ? username : "agentic");
+            script.setApprovedAt(Instant.now());
+            log.info("Script {} auto-approved for agentic run by {} (hash {})", id, username, script.getContentHash());
+            return detail(scriptRepository.save(script));
+        }
+        return detail(script);
+    }
+
     public ScriptDetail revoke(Long id) {
         TestScript script = find(id);
         revokeApproval(script);

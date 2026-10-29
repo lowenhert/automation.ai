@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowenhert.patchmanagement.core.ai.AiProviderException;
 import com.lowenhert.patchmanagement.core.ai.ModelCapabilities;
-import com.lowenhert.patchmanagement.core.ai.OllamaProperties;
+import com.lowenhert.patchmanagement.core.ai.BedrockProperties;
 import com.lowenhert.patchmanagement.core.ai.StructuredChatService;
 import com.lowenhert.patchmanagement.core.screenlearning.history.CapturedScreen;
 import com.lowenhert.patchmanagement.core.screenlearning.history.ScreenTextRegion;
@@ -54,16 +54,16 @@ public class ScreenInterpretationService {
 
     private final StructuredChatService chat;
     private final ModelCapabilities capabilities;
-    private final OllamaProperties ollama;
+    private final BedrockProperties bedrock;
     private final JsonNode schema;
     private final boolean enabled;
 
-    public ScreenInterpretationService(StructuredChatService chat, ModelCapabilities capabilities, OllamaProperties ollama,
+    public ScreenInterpretationService(StructuredChatService chat, ModelCapabilities capabilities, BedrockProperties bedrock,
                                        ObjectMapper objectMapper,
                                        @Value("${app.exploration.interpretation.enabled:true}") boolean enabled) {
         this.chat = chat;
         this.capabilities = capabilities;
-        this.ollama = ollama;
+        this.bedrock = bedrock;
         this.enabled = enabled;
         try (var in = getClass().getResourceAsStream("/ai/screen-interpretation.schema.json")) {
             if (in == null) throw new IllegalStateException("Missing classpath resource ai/screen-interpretation.schema.json");
@@ -102,7 +102,7 @@ public class ScreenInterpretationService {
                 boolean verified = imageVerified(result.visibleText(), screen);
                 log.info("Interpreted capture {} with image input (verified={}): {}", screen.getCaptureId(), verified, result.screenName());
                 return new Result(result, verified ? ScreenNode.InterpretationInput.IMAGE
-                        : ScreenNode.InterpretationInput.IMAGE_UNVERIFIED, ollama.getModel(), null);
+                        : ScreenNode.InterpretationInput.IMAGE_UNVERIFIED, bedrock.getModel(), null);
             } catch (AiProviderException e) {
                 if (e.getReason() != AiProviderException.Reason.PROVIDER_ERROR
                         && e.getReason() != AiProviderException.Reason.INVALID_OUTPUT) {
@@ -121,7 +121,7 @@ public class ScreenInterpretationService {
                             In visibleText, copy up to 10 relevant OCR lines.""",
                     context, schema, Interpretation.class, ScreenInterpretationService::validate);
             log.info("Interpreted capture {} from OCR text: {}", screen.getCaptureId(), result.screenName());
-            return new Result(result, ScreenNode.InterpretationInput.TEXT, ollama.getModel(), null);
+            return new Result(result, ScreenNode.InterpretationInput.TEXT, bedrock.getModel(), null);
         } catch (AiProviderException e) {
             return Result.failed(e.getMessage());
         }
@@ -184,3 +184,4 @@ public class ScreenInterpretationService {
         return Base64.getEncoder().encodeToString(out.toByteArray());
     }
 }
+

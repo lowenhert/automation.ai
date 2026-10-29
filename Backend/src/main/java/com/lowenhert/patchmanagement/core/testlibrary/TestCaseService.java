@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.function.Function;
 
-/** Test case library: CRUD, events, duplication, safe deletion, import from approved plans and code generation. */
+/** Test case library: CRUD, events, duplication, safe deletion, import from plans and code generation. */
 @Slf4j
 @Service
 public class TestCaseService {
@@ -167,14 +167,14 @@ public class TestCaseService {
 
     // ── Plans and code generation ───────────────────────────────────────────
 
-    /** Creates a test case from an APPROVED plan with a deterministic step mapping (no LLM involved). */
+    /** Creates a test case from a plan with a deterministic step mapping (no LLM involved). */
     @Transactional
     public TestCaseDetail fromPlan(FromPlanRequest request, String username) {
         if (request == null || request.planId() == null) throw new BadRequestException("planId is required");
         AiTestPlan plan = planRepository.findById(request.planId())
                 .orElseThrow(() -> new ResourceNotFoundException("Test plan " + request.planId() + " not found"));
-        if (plan.getStatus() != AiTestPlan.Status.APPROVED) {
-            throw new BadRequestException("Only approved test plans can be turned into test cases");
+        if (plan.getStatus() == AiTestPlan.Status.REJECTED) {
+            throw new BadRequestException("Rejected test plans cannot be turned into test cases");
         }
         GeneratedTestPlan generated;
         try {
@@ -242,7 +242,7 @@ public class TestCaseService {
     private static TestCaseEvent screenCheck(Long screenId, String expected, int timeoutMs, Function<Long, List<String>> screenTexts) {
         List<String> texts = screenTexts.apply(screenId).stream()
                 .filter(t -> t.chars().filter(Character::isLetter).count() >= 3)
-                .filter(t -> !t.contains(TestCaseEvent.ANY_SEPARATOR.strip()))
+        .filter(t -> !t.contains(TestCaseEvent.ANY_SEPARATOR.strip()))
                 .sorted(Comparator.comparingInt(String::length).reversed())
                 .limit(SCREEN_CHECK_TEXTS)
                 .toList();

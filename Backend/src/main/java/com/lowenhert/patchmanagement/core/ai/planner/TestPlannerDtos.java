@@ -15,6 +15,9 @@ public final class TestPlannerDtos {
     public record GenerateRequest(String goal, String deviceId, Long startScreenId, Integer maxSteps) {
     }
 
+    public record ExecutePlanRequest(String deviceId, Integer timeoutSeconds) {
+    }
+
     public record ReviewRequest(AiTestPlan.Status decision, String notes) {
     }
 
@@ -28,6 +31,6 @@ public final class TestPlannerDtos {
                              List<PlanReviewer.Flag> flags, Map<Integer, PlanReviewer.Evidence> stepEvidence,
                              JsonNode knowledge, int errorFlags, int warningFlags, String model, int attempts,
                              String createdBy, Instant createdAt, String reviewedBy, Instant reviewedAt,
-                             String reviewNotes, String note) {
+                             String reviewNotes, String note, Long executionId) {
     }
 }

@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowenhert.patchmanagement.core.ai.AiProviderException;
 import com.lowenhert.patchmanagement.core.ai.JsonSchemaValidator;
-import com.lowenhert.patchmanagement.core.ai.OllamaClient;
-import com.lowenhert.patchmanagement.core.ai.OllamaProperties;
+import com.lowenhert.patchmanagement.core.ai.BedrockClient;
+import com.lowenhert.patchmanagement.core.ai.BedrockProperties;
 import com.lowenhert.patchmanagement.core.ai.StructuredChatService;
 import com.lowenhert.patchmanagement.core.ai.planner.TestPlannerDtos.*;
 import com.lowenhert.patchmanagement.core.config.exception.BadRequestException;
@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/** Planner end-to-end with real retrieval, schema validation, review and persistence (H2); only Ollama is scripted. */
+/** Planner end-to-end with real retrieval, schema validation, review and persistence (H2); only bedrock is scripted. */
 @DataJpaTest
 @ActiveProfiles("h2")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -47,7 +47,7 @@ class AiTestPlannerServiceTest {
     @Autowired private AiTestPlanRepository planRepository;
 
     private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
-    private OllamaClient ollama;
+    private BedrockClient bedrock;
     private AiTestPlannerService planner;
     private ScreenNode home, settings, network, prefs;
 
@@ -61,14 +61,14 @@ class AiTestPlannerServiceTest {
         edge(settings, RemoteKey.SELECT, network);
         edge(network, RemoteKey.BACK, settings);
 
-        ollama = mock(OllamaClient.class);
+        bedrock = mock(BedrockClient.class);
         planner = newPlanner(3);
     }
 
     private AiTestPlannerService newPlanner(int maxAttempts) {
         return new AiTestPlannerService(new PlannerKnowledgeService(nodeRepository, transitionRepository, capturedRepository),
-                new StructuredChatService(ollama, new JsonSchemaValidator()), planRepository, nodeRepository,
-                new OllamaProperties("http://localhost:11434", "gemma4:31b-cloud", 1000, 1000, "", 1), mapper, maxAttempts);
+                new StructuredChatService(bedrock, new JsonSchemaValidator()), planRepository, nodeRepository,
+                new BedrockProperties("https://bedrock-mantle.us-east-1.api.aws/v1", "deepseek.v3.2", "", 1000, 1000, 1), mapper, maxAttempts, org.mockito.Mockito.mock(com.lowenhert.patchmanagement.core.testlibrary.TestCaseService.class), org.mockito.Mockito.mock(com.lowenhert.patchmanagement.core.testlibrary.TestScriptService.class), org.mockito.Mockito.mock(com.lowenhert.patchmanagement.core.testlibrary.ScriptExecutionService.class), org.mockito.Mockito.mock(com.lowenhert.patchmanagement.core.screenlearning.adb.ScreenLearningAdbService.class));
     }
 
     private ScreenNode node(String label, String risk, String... texts) {
@@ -95,8 +95,8 @@ class AiTestPlannerServiceTest {
                 .observationCount(2).firstSeenAt(now).lastSeenAt(now).build());
     }
 
-    private static OllamaClient.ChatResponse reply(String content) {
-        return new OllamaClient.ChatResponse("gemma4:31b-cloud", OllamaClient.ChatMessage.assistant(content), true, "stop", 1, 1, 1L);
+    private static BedrockClient.ChatResponse reply(String content) {
+        return new BedrockClient.ChatResponse(BedrockClient.ChatMessage.assistant(content), 1, 1, "stop");
     }
 
     private String validPlan() {
@@ -121,7 +121,7 @@ class AiTestPlannerServiceTest {
 
     @Test
     void generatesGroundedDraftAndSavesCanonicalJson() {
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply(validPlan()));
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply(validPlan()));
 
         PlanDetail detail = planner.generate(request("Verify that Wi-Fi settings can be opened from home"), "alice");
 
@@ -144,10 +144,10 @@ class AiTestPlannerServiceTest {
 
     @Test
     void promptContainsOnlyRealObservationsMarkedAsData() {
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply(validPlan()));
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply(validPlan()));
         planner.generate(request("Open network settings"), "alice");
 
-        verify(ollama).chat(argThat(messages -> {
+        verify(bedrock).chat(argThat(messages -> {
             String system = messages.get(0).content();
             String user = messages.get(1).content();
             return system.contains("never claim that anything") && system.contains("\"enum\"")
@@ -163,18 +163,18 @@ class AiTestPlannerServiceTest {
                  "expectedScreenId":2,"target":null,"expectedState":"s","timeoutMs":5000,"onFailure":"ABORT"}],
                  "assertions":[],"failureHandling":{"maxRetries":0,"recovery":"NONE","notes":""},"assumptions":[],
                  "result":"PASSED"}""";
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply(invented), reply(validPlan()));
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply(invented), reply(validPlan()));
 
         PlanDetail detail = planner.generate(request("Open network settings"), "alice");
 
         assertEquals(2, detail.attempts());
-        verify(ollama).chat(argThat(m -> m.size() == 4 && m.get(3).content().contains("schema violation")
+        verify(bedrock).chat(argThat(m -> m.size() == 4 && m.get(3).content().contains("schema violation")
                 && m.get(3).content().contains("result")), any(), anyMap());
     }
 
     @Test
     void retriesAreBoundedAndNothingIsSavedWhenOutputNeverValidates() {
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply("I cannot help with that."));
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply("I cannot help with that."));
         long before = planRepository.count();
 
         AiProviderException ex = assertThrows(AiProviderException.class,
@@ -182,13 +182,13 @@ class AiTestPlannerServiceTest {
 
         assertEquals(AiProviderException.Reason.INVALID_OUTPUT, ex.getReason());
         assertTrue(ex.getMessage().contains("3 attempt(s)"));
-        verify(ollama, times(3)).chat(anyList(), any(), anyMap());
+        verify(bedrock, times(3)).chat(anyList(), any(), anyMap());
         assertEquals(before, planRepository.count());
 
-        reset(ollama);
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply("{}"));
+        reset(bedrock);
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply("{}"));
         assertThrows(AiProviderException.class, () -> newPlanner(1).generate(request("Open network settings"), "a"));
-        verify(ollama, times(1)).chat(anyList(), any(), anyMap());
+        verify(bedrock, times(1)).chat(anyList(), any(), anyMap());
     }
 
     @Test
@@ -199,7 +199,7 @@ class AiTestPlannerServiceTest {
                  {"order":2,"action":"UNSUPPORTED","requestedAction":"Enter PIN 0000","fromScreenId":null,"expectedScreenId":null,"target":null,"expectedState":"PIN accepted","timeoutMs":5000,"onFailure":"ABORT"}],
                  "assertions":[],"failureHandling":{"maxRetries":0,"recovery":"NONE","notes":""},"assumptions":["PIN is 0000"]}"""
                 .formatted(prefs.getId());
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply(risky));
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply(risky));
 
         PlanDetail detail = planner.generate(new GenerateRequest("Factory reset the device", SERIAL, null, 10), "alice");
 
@@ -219,7 +219,7 @@ class AiTestPlannerServiceTest {
 
     @Test
     void cleanPlanCanBeApprovedAndListed() {
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply(validPlan()));
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply(validPlan()));
         PlanDetail detail = planner.generate(request("Open network settings"), "alice");
 
         assertEquals(AiTestPlan.Status.APPROVED,
@@ -238,12 +238,12 @@ class AiTestPlannerServiceTest {
         assertThrows(BadRequestException.class, () -> planner.generate(new GenerateRequest("Open settings", SERIAL, null, 41), "a"));
         assertThrows(BadRequestException.class, () -> planner.generate(new GenerateRequest("Open settings", "other-device", home.getId(), 10), "a"));
         assertThrows(BadRequestException.class, () -> planner.review(1L, new ReviewRequest(null, null), "a"));
-        verifyNoInteractions(ollama);
+        verifyNoInteractions(bedrock);
     }
 
     @Test
     void unexploredDeviceStillPlansButSaysSo() {
-        when(ollama.chat(anyList(), any(), anyMap())).thenReturn(reply("""
+        when(bedrock.chat(anyList(), any(), anyMap())).thenReturn(reply("""
                 {"title":"Open settings","summary":"","preconditions":[{"description":"Home screen","screenId":null}],
                  "steps":[{"order":1,"action":"HOME","fromScreenId":null,"expectedScreenId":null,"unknownScreenDescription":"Home screen",
                  "target":null,"expectedState":"Home shown","timeoutMs":5000,"onFailure":"ABORT"}],
@@ -252,6 +252,8 @@ class AiTestPlannerServiceTest {
         PlanDetail detail = planner.generate(new GenerateRequest("Open settings", "192.168.1.20:5555", null, 5), "a");
 
         assertEquals(PlanReviewer.FlagType.NO_SCREEN_KNOWLEDGE, detail.flags().get(0).type());
-        verify(ollama).chat(argThat(m -> m.get(1).content().contains("has not been explored")), any(), anyMap());
+        verify(bedrock).chat(argThat(m -> m.get(1).content().contains("has not been explored")), any(), anyMap());
     }
 }
+
+

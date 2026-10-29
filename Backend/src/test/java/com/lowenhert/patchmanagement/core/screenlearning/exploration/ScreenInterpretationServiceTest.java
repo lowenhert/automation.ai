@@ -3,7 +3,7 @@ package com.lowenhert.patchmanagement.core.screenlearning.exploration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowenhert.patchmanagement.core.ai.AiProviderException;
 import com.lowenhert.patchmanagement.core.ai.ModelCapabilities;
-import com.lowenhert.patchmanagement.core.ai.OllamaProperties;
+import com.lowenhert.patchmanagement.core.ai.BedrockProperties;
 import com.lowenhert.patchmanagement.core.ai.StructuredChatService;
 import com.lowenhert.patchmanagement.core.screenlearning.history.CapturedScreen;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,7 @@ class ScreenInterpretationServiceTest {
         chat = mock(StructuredChatService.class);
         capabilities = mock(ModelCapabilities.class);
         service = new ScreenInterpretationService(chat, capabilities,
-                new OllamaProperties("http://localhost:11434", "gemma4:31b-cloud", 1000, 1000, "", 1), new ObjectMapper(), true);
+                new BedrockProperties("https://bedrock-mantle.us-east-1.api.aws/v1", "deepseek.v3.2", "", 1000, 1000, 1), new ObjectMapper(), true);
         image = dir.resolve("shot.png");
         ImageIO.write(new BufferedImage(1080, 2340, BufferedImage.TYPE_INT_RGB), "png", image.toFile());
         screen = ScreenFingerprintTest.screen("c5ffd59b90a02ae0", "Settings", "Network & internet", "Connected devices", "Apps");
@@ -85,14 +85,14 @@ class ScreenInterpretationServiceTest {
     void failedImageRequestFallsBackToText() {
         when(capabilities.supportsVision()).thenReturn(true);
         when(chat.chatJson(anyString(), anyString(), anyList(), any(), any(), any()))
-                .thenThrow(new AiProviderException(AiProviderException.Reason.PROVIDER_ERROR, "Ollama returned HTTP 400: image input not supported"));
+                .thenThrow(new AiProviderException(AiProviderException.Reason.PROVIDER_ERROR, "Bedrock returned HTTP 400: image input not supported"));
         when(chat.chatJson(anyString(), anyString(), any(), any(), any())).thenReturn(answer(List.of()));
 
         assertEquals(ScreenNode.InterpretationInput.TEXT, service.interpret(screen, image).input());
     }
 
     @Test
-    void ollamaDownReturnsFailureWithoutThrowing() {
+    void bedrockDownReturnsFailureWithoutThrowing() {
         when(capabilities.supportsVision()).thenReturn(true);
         when(chat.chatJson(anyString(), anyString(), anyList(), any(), any(), any()))
                 .thenThrow(new AiProviderException(AiProviderException.Reason.CONNECTION_FAILED, "Cannot connect"));
@@ -137,3 +137,4 @@ class ScreenInterpretationServiceTest {
         assertTrue(context.contains("\"Network & internet\" at (100,"));
     }
 }
+

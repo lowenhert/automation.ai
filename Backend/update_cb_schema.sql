@@ -283,3 +283,8 @@ CREATE TABLE IF NOT EXISTS script_executions (
     INDEX idx_script_executions_script (script_id),
     INDEX idx_script_executions_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Fix: Update script_executions foreign key to point to test_scripts instead of legacy scripts
+ALTER TABLE script_executions DROP FOREIGN KEY IF EXISTS FKqmaaundn80kf52jcsaxb0i062;
+ALTER TABLE script_executions ADD CONSTRAINT fk_script_executions_test_script FOREIGN KEY (script_id) REFERENCES test_scripts(id) ON DELETE CASCADE;
+

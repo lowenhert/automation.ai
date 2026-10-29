@@ -18,11 +18,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** HTTP-level behaviour of /api/ai when Ollama is unreachable (port 9 on localhost is the discard port; nothing listens). */
+/** HTTP-level behaviour of /api/ai when Bedrock is unreachable (port 9 on localhost is the discard port; nothing listens). */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:ai-api;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
-        "app.ai.ollama.base-url=http://127.0.0.1:9",
-        "app.ai.ollama.connect-timeout-ms=2000"
+        "app.ai.bedrock.base-url=http://127.0.0.1:9",
+        "app.ai.bedrock.connect-timeout-ms=2000"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("h2")
@@ -57,15 +57,15 @@ class AiApiTest {
     }
 
     @Test
-    void healthReportsDownWhenOllamaIsUnreachable() throws Exception {
+    void healthReportsDownWhenBedrockIsUnreachable() throws Exception {
         mvc.perform(get("/api/ai/health").header("Authorization", token))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.status").value("DOWN"))
-                .andExpect(jsonPath("$.provider").value("ollama"))
+                .andExpect(jsonPath("$.provider").value("Bedrock"))
                 .andExpect(jsonPath("$.model").value("gemma4:31b-cloud"))
                 .andExpect(jsonPath("$.reachable").value(false))
                 .andExpect(jsonPath("$.error.reason").value("CONNECTION_FAILED"))
-                .andExpect(jsonPath("$.error.message", containsString("Is Ollama running?")));
+                .andExpect(jsonPath("$.error.message", containsString("Is Bedrock running?")));
     }
 
     @Test
@@ -80,10 +80,11 @@ class AiApiTest {
     }
 
     @Test
-    void draftReturns503WhenOllamaIsUnreachable() throws Exception {
+    void draftReturns503WhenBedrockIsUnreachable() throws Exception {
         mvc.perform(post("/api/ai/test-plans/draft").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"goal\":\"Open Settings and check Wi-Fi\"}"))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.message", containsString("Cannot connect to Ollama")));
+                .andExpect(jsonPath("$.message", containsString("Cannot connect to Bedrock")));
     }
 }
+

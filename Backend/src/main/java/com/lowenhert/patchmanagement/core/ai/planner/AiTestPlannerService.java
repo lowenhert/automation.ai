@@ -5,17 +5,28 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.lowenhert.patchmanagement.core.ai.OllamaProperties;
+import com.lowenhert.patchmanagement.core.ai.BedrockProperties;
 import com.lowenhert.patchmanagement.core.ai.StructuredChatService;
 import com.lowenhert.patchmanagement.core.ai.planner.TestPlannerDtos.*;
 import com.lowenhert.patchmanagement.core.config.exception.BadRequestException;
 import com.lowenhert.patchmanagement.core.config.exception.ConflictException;
 import com.lowenhert.patchmanagement.core.config.exception.ResourceNotFoundException;
 import com.lowenhert.patchmanagement.core.screenlearning.adb.AdbInputValidator;
+import com.lowenhert.patchmanagement.core.screenlearning.adb.ScreenLearningAdbService;
 import com.lowenhert.patchmanagement.core.screenlearning.exploration.ScreenNodeRepository;
 import com.lowenhert.patchmanagement.core.screenlearning.history.dto.PageResponse;
+import com.lowenhert.patchmanagement.core.testlibrary.TestCaseService;
+import com.lowenhert.patchmanagement.core.testlibrary.TestScriptService;
+import com.lowenhert.patchmanagement.core.testlibrary.ScriptExecutionService;
+import com.lowenhert.patchmanagement.core.testlibrary.TestScript;
+import com.lowenhert.patchmanagement.core.testlibrary.TestLibraryDtos.FromPlanRequest;
+import com.lowenhert.patchmanagement.core.testlibrary.TestLibraryDtos.TestCaseDetail;
+import com.lowenhert.patchmanagement.core.testlibrary.TestLibraryDtos.ScriptDetail;
+import com.lowenhert.patchmanagement.core.testlibrary.TestLibraryDtos.ExecutionDto;
+import com.lowenhert.patchmanagement.core.testlibrary.TestLibraryDtos.ExecuteRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -28,8 +39,8 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * Generates grounded UI test plans from natural-language goals using the configured Ollama model.
- * Plans are validated, reviewed against observed screens/transitions, and saved as DRAFTs. Nothing is executed.
+ * Generates grounded UI test plans from natural-language goals using Amazon Bedrock.
+ * Plans can be executed directly on an online device without manual approval.
  */
 @Slf4j
 @Service
@@ -41,7 +52,7 @@ public class AiTestPlannerService {
     static final int MAX_STEPS_LIMIT = 40;
     static final int MAX_KNOWLEDGE_CHARS = 60_000;
     static final int MAX_PAGE_SIZE = 100;
-    static final String DRAFT_NOTE = "AI-generated plan for review. It has not been executed; flags show what is unverified.";
+    static final String DRAFT_NOTE = "AI-generated plan. Flags show what is unverified.";
     private static final Pattern CONTROL = Pattern.compile("[\\p{Cntrl}&&[^\\n\\t]]");
 
     static final String SYSTEM_PROMPT = """
@@ -73,15 +84,23 @@ public class AiTestPlannerService {
     private final StructuredChatService chat;
     private final AiTestPlanRepository repository;
     private final ScreenNodeRepository nodeRepository;
-    private final OllamaProperties ollama;
+    private final BedrockProperties bedrock;
     private final ObjectMapper objectMapper;
     private final JsonNode schema;
     private final int maxAttempts;
+    private final TestCaseService testCaseService;
+    private final TestScriptService testScriptService;
+    private final ScriptExecutionService scriptExecutionService;
+    private final ScreenLearningAdbService adbService;
 
     public AiTestPlannerService(PlannerKnowledgeService knowledgeService, StructuredChatService chat,
                                 AiTestPlanRepository repository, ScreenNodeRepository nodeRepository,
-                                OllamaProperties ollama, ObjectMapper objectMapper,
-                                @Value("${app.ai.planner.max-attempts:3}") int maxAttempts) {
+                                BedrockProperties bedrock, ObjectMapper objectMapper,
+                                @Value("${app.ai.planner.max-attempts:3}") int maxAttempts,
+                                @Lazy TestCaseService testCaseService,
+                                TestScriptService testScriptService,
+                                ScriptExecutionService scriptExecutionService,
+                                ScreenLearningAdbService adbService) {
         if (maxAttempts < 1 || maxAttempts > StructuredChatService.MAX_ATTEMPTS_LIMIT) {
             throw new IllegalStateException("app.ai.planner.max-attempts must be between 1 and "
                     + StructuredChatService.MAX_ATTEMPTS_LIMIT);
@@ -90,9 +109,13 @@ public class AiTestPlannerService {
         this.chat = chat;
         this.repository = repository;
         this.nodeRepository = nodeRepository;
-        this.ollama = ollama;
+        this.bedrock = bedrock;
         this.objectMapper = objectMapper;
         this.maxAttempts = maxAttempts;
+        this.testCaseService = testCaseService;
+        this.testScriptService = testScriptService;
+        this.scriptExecutionService = scriptExecutionService;
+        this.adbService = adbService;
         try (var in = getClass().getResourceAsStream("/ai/test-plan.schema.json")) {
             if (in == null) throw new IllegalStateException("Missing classpath resource ai/test-plan.schema.json");
             this.schema = objectMapper.readTree(in);
@@ -101,7 +124,7 @@ public class AiTestPlannerService {
         }
     }
 
-    public PlanDetail generate(GenerateRequest request, String username) {
+    public PlanDetail generate(TestPlannerDtos.GenerateRequest request, String username) {
         if (request == null) throw new BadRequestException("Request body is required");
         String goal = requireGoal(request.goal());
         String serial = AdbInputValidator.requireSerial(request.deviceId());
@@ -138,13 +161,57 @@ public class AiTestPlannerService {
                 .knowledgeJson(write(knowledgeSnapshot(knowledge)))
                 .errorFlags((int) review.count(PlanReviewer.Severity.ERROR))
                 .warningFlags((int) review.count(PlanReviewer.Severity.WARNING))
-                .model(ollama.getModel())
+                .model(bedrock.getModel())
                 .attempts(result.attempts())
                 .createdBy(username)
                 .build());
-        log.info("Saved draft test plan {} '{}' ({} steps, {} errors, {} warnings, {} attempt(s))", saved.getId(),
+        log.info("Saved test plan {} '{}' ({} steps, {} errors, {} warnings, {} attempt(s))", saved.getId(),
                 saved.getTitle(), saved.getStepCount(), saved.getErrorFlags(), saved.getWarningFlags(), saved.getAttempts());
+
+        // Auto-execute if device is online
+        try {
+            var onlineDevice = adbService.getDevice(serial);
+            if (onlineDevice != null && "device".equals(onlineDevice.getState())) {
+                log.info("Device {} is online, auto-executing plan {}", serial, saved.getId());
+                return execute(saved.getId(), new ExecutePlanRequest(serial, 120), username);
+            }
+        } catch (Exception e) {
+            log.warn("Auto-execution after plan generation skipped for plan {}: {}", saved.getId(), e.getMessage());
+        }
+
         return toDetail(saved);
+    }
+
+    public PlanDetail execute(Long id, ExecutePlanRequest request, String username) {
+        AiTestPlan plan = load(id);
+        String serial = (request != null && request.deviceId() != null && !request.deviceId().isBlank())
+                ? AdbInputValidator.requireSerial(request.deviceId())
+                : plan.getDeviceSerial();
+        int timeout = (request != null && request.timeoutSeconds() != null && request.timeoutSeconds() >= 10)
+                ? request.timeoutSeconds()
+                : 120;
+
+        // Convert plan to TestCase
+        TestCaseDetail testCase = testCaseService.fromPlan(new FromPlanRequest(plan.getId(), plan.getTitle()), username);
+
+        // Generate script
+        ScriptDetail script = testCaseService.generateScript(testCase.id(),
+                new com.lowenhert.patchmanagement.core.testlibrary.TestLibraryDtos.GenerateRequest(TestScript.Language.PYTEST, null), username);
+
+        // Validate and auto-approve
+        testScriptService.validateAndAutoApprove(script.id(), username != null ? username : "agentic");
+
+        // Re-read script for approved content hash
+        ScriptDetail updatedScript = testScriptService.get(script.id());
+
+        // Start execution
+        ExecutionDto execution = scriptExecutionService.start(
+                new ExecuteRequest(updatedScript.id(), serial, updatedScript.contentHash(), timeout, true),
+                username != null ? username : "agentic");
+
+        plan.setStatus(AiTestPlan.Status.EXECUTING);
+        plan.setExecutionId(execution.id());
+        return toDetail(repository.save(plan));
     }
 
     public PageResponse<PlanSummary> list(int page, int size, String deviceId, AiTestPlan.Status status) {
@@ -238,7 +305,7 @@ public class AiTestPlannerService {
         return new PlanDetail(p.getId(), p.getStatus(), p.getTitle(), p.getGoal(), p.getDeviceSerial(), p.getStartScreenId(),
                 p.getMaxSteps(), p.getStepCount(), read(p.getPlanJson()), flags, evidence, read(p.getKnowledgeJson()),
                 p.getErrorFlags(), p.getWarningFlags(), p.getModel(), p.getAttempts(), p.getCreatedBy(), p.getCreatedAt(),
-                p.getReviewedBy(), p.getReviewedAt(), p.getReviewNotes(), DRAFT_NOTE);
+                p.getReviewedBy(), p.getReviewedAt(), p.getReviewNotes(), DRAFT_NOTE, p.getExecutionId());
     }
 
     private AiTestPlan load(Long id) {
@@ -287,3 +354,4 @@ public class AiTestPlannerService {
         return s == null || s.length() <= max ? s : s.substring(0, max);
     }
 }
+
